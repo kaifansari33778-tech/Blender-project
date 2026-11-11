@@ -12,8 +12,8 @@ def build(scene, cam):
     scene.view_settings.exposure = -0.3
     rc = cast.ratcatcher()
     crowd = [cast.towns_woman('w1', 21), cast.gentleman('g1', 22), cast.towns_woman('w2', 23, skirt=(0.2, 0.25, 0.33), top=(0.5, 0.4, 0.3), hair='bob02', old=0.7, hat=False)]
-    spots = [((-1.7, 4.2), 0.9), ((1.5, 4.6), -0.8), ((0.3, 5.4), 0.1)]      # (pos, heading) around the catcher
-    rat = props.Rat('rat'); rat2 = props.Rat('rat2', fur=False)
+    spots = [((-1.35, 3.6), 0.9), ((1.3, 3.8), -0.8), ((0.25, 4.5), 0.1)]      # (pos, heading) around the catcher
+    rat = props.Rat('rat', scale=0.72); rat2 = props.Rat('rat2', scale=0.72, fur=False)
     cage = props.cage()
     CP = Vector((0, 2.6, 0))       # where the show happens
 
@@ -88,7 +88,7 @@ def build(scene, cam):
         rc.hand('L', rc.W((-0.45, 0.25, 1.15)), fwd=rc.D((-0.6, 0.5, 0.6)), palm=rc.D((0, 1, 0.3)), world=True); rc.fingers('L', 0.05, spread=1); rc.elbow('L', (-0.9, -0.3, 0.9))
         g = rc.palm('R', 0.075, 0.045)
         # rat hangs head-down from the fist; tail droops and lashes
-        rat.set(g + Vector((0, 0, -0.03 - 0.05 * mouth)), (lerp(0.9, 1.45, mouth) + 0.12 * math.sin(t * 13), 0.2 * math.sin(t * 9), 0.3 * math.sin(t * 11) + 3.14), t, wag=1.5, droop=1.0)
+        rat.set(g + Vector((0, 0, -0.02 - 0.03 * mouth)), (lerp(0.9, 1.45, mouth) + 0.12 * math.sin(t * 13), 0.2 * math.sin(t * 9), 0.3 * math.sin(t * 11) + 3.14), t, wag=1.5, droop=1.0)
         return g
 
     def s_1c(t):      # montage: low hero angle, rat aloft against the sky
@@ -97,7 +97,7 @@ def build(scene, cam):
         crowd_update(t, 0.4)
         rc.face(t, smile=0.9, brow_up=0.6, jaw=0.25, eye_wide=0.3)
         u = ramp(t, 8.2, 9.6)
-        shoot(cam, t, CP + Vector((0.5 - 0.25 * u, -1.5, 0.75)), CP + Vector((0.15, 0, 1.65)), 28, shake=1.3, seed=5)
+        shoot(cam, t, CP + Vector((0.6 - 0.25 * u, -1.9, 0.7)), CP + Vector((0.2, 0, 1.75)), 24, shake=1.3, seed=5)
 
     def s_5c(t):      # arc from the crowd's side round to his face as the rat goes to his mouth: we get the crowd's view, then theirs of us
         a = 48.5

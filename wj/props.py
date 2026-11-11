@@ -77,6 +77,7 @@ def lantern(energy=60, color=(1.0, 0.62, 0.3)):
     parts.append(box((0.085, 0.085, 0.15), (0, 0, -0.12), mat('clear')))
     parts.append(sphere(0.016, (0, 0, -0.13), mat('emit', c=color, e=60), scale=(1, 1, 1.6), seg=8))
     o = join(parts, 'lantern')
+    o.visible_shadow = False
     l = light('POINT', (0, 0, -0.13), energy, color, size=0.03)
     l.parent = o
     o['light'] = l.name
@@ -102,17 +103,17 @@ def dung():
     return join(parts, 'dung')
 
 
-def shroud(length=1.7, seed=0, color=(0.62, 0.58, 0.5)):
+def shroud(length=1.7, seed=0, color=(0.42, 0.38, 0.3)):
     """A body sewn into a winding sheet, lying along +Y, back on z=0."""
     s = length / 1.7
-    prof = [(0, 0.02), (0.03, 0.085), (0.12, 0.105), (0.22, 0.09), (0.27, 0.075), (0.36, 0.2), (0.55, 0.19), (0.75, 0.165), (0.95, 0.175),
+    prof = [(0, 0.02), (0.03, 0.085), (0.12, 0.105), (0.22, 0.1), (0.27, 0.11), (0.36, 0.2), (0.55, 0.19), (0.75, 0.165), (0.95, 0.175),
             (1.2, 0.13), (1.45, 0.1), (1.6, 0.085), (1.68, 0.1), (1.7, 0.02)]
     ell = [(1, 1), (1, 1), (1, 1.05), (1, 1), (1, .9), (1, .55), (1, .6), (1, .6), (1, .58), (1, .6), (1, .62), (1, .7), (.9, 1.1), (1, 1)]
     o = lathe([(p * s, r * s) for p, r in prof], 18, mat('cloth', c=color, scale=9), 'shroud', axis='Y', ell=ell)
     from mathutils import noise as mn
     off = Vector((seed * 3.1, seed * 1.7, 0))
     for v in o.data.vertices:
-        v.co += v.normal * mn.noise(v.co * 9 + off) * 0.018
+        v.co += v.normal * (mn.noise(v.co * 9 + off) * 0.022 + mn.noise(v.co * 30 + off) * 0.008)
         v.co.z += 0.105 * s
     parts = [o]
     for y in (0.3, 0.9, 1.5):
@@ -160,6 +161,7 @@ def crown():
         parts.append(cyl(0.013, 0.05, (math.cos(a) * 0.088, math.sin(a) * 0.088, 0.04), g, r2=0.001, seg=6))
         parts.append(sphere(0.008, (math.cos(a + .39) * 0.09, math.sin(a + .39) * 0.09, 0.0), mat('plain', c=(0.5, 0.02, 0.03), rough=0.1), seg=8))
     o = join(parts, 'crown')
+    o['s'] = 0.86
     m = o.modifiers.new('s', 'SOLIDIFY'); m.thickness = 0.004
     return o
 
@@ -210,7 +212,7 @@ class Rat:
 
     def __init__(self, name='rat', scale=1.0, fur=True, color=(0.16, 0.11, 0.075)):
         s = scale
-        skin = mat('plain', c=(0.55, 0.36, 0.33), rough=0.5, sss=0.3)
+        skin = mat('plain', c=(0.3, 0.19, 0.17), rough=0.5, sss=0.3)
         prof = [(-0.118, 0.002), (-0.112, 0.008), (-0.095, 0.017), (-0.07, 0.026), (-0.045, 0.031), (-0.02, 0.036), (0.02, 0.046), (0.06, 0.05),
                 (0.09, 0.046), (0.108, 0.034), (0.118, 0.016), (0.121, 0.004)]
         ell = [(1, 1), (1, .9), (1, .95), (1, 1), (1.05, 1), (1.05, 1), (1.1, 1), (1.12, 1), (1.1, 1), (1, 1), (1, 1), (1, 1)]

@@ -10,7 +10,7 @@ from ..film import shoot
 def build(scene, cam):
     sets.palace()
     stage.sky(scene, elevation=34, rotation=262, strength=0.2, dust=1.5)
-    scene.view_settings.exposure = 0.5
+    scene.view_settings.exposure = -0.1
     boy = cast.whipping_boy(); pr = cast.prince(); tu = cast.tutor()
     whip = props.Whip()
     books = [props.book(c) for c in ((0.3, 0.05, 0.05), (0.06, 0.12, 0.25), (0.1, 0.2, 0.1))]
@@ -77,7 +77,7 @@ def build(scene, cam):
         boy.spine(rx=0.55 - 0.3 * fl, rz=0.05 * noise(t, 2, 3)); boy.head(rx=-0.35 - 0.3 * fl + 0.25 * dread, rz=0.12)
         boy.foot('L', (-(boy.hip_w + 0.05), -0.12, 0), yaw=0.15); boy.foot('R', (boy.hip_w + 0.05, -0.2, 0), yaw=-0.15, pitch=0.2 * fl)
         for s, sg in (('L', -1), ('R', 1)):
-            boy.hand(s, Vector((-0.9 + sg * -0.22, -2.3, 0.77)), fwd=(0, 1, -0.15), palm=(0, 0, -1), world=True)
+            boy.hand(s, Vector((-0.9 + sg * 0.22, -2.3, 0.77)), fwd=(0, 1, -0.15), palm=(0, 0, -1), world=True)
             boy.fingers(s, 0.25 + 0.6 * max(fl, dread), thumb=0.4); boy.elbow(s, (sg * 0.9, -0.6, 0.9)); boy.clav(s, up=0.5 * max(fl, dread))
         hurt = max(fl, 0.55 * after)
         boy.face(t, blink=False, eye_close=min(1, 0.6 * dread + fl), brow_inner=0.6 + 0.4 * hurt, brow_down=0.7 * fl, eye_squint=0.5 * hurt, grimace=0.9 * fl + 0.25 * after,
@@ -162,7 +162,7 @@ def build(scene, cam):
         boy.face(t, brow_inner=1.0, brow_up=0.5, eye_wide=0.6, press=0.4); boy.head(rz=-0.9, rx=-0.2)
         u = ramp(t, a, 80.9)
         hdp = pr.W((0, 0, pr.h.height - 0.2))
-        shoot(cam, t, hdp + vlerp((-0.3, -2.5, -0.7), (-0.85, -2.2, -0.55), u), hdp + Vector((-0.25, 0, 0.12)), 30, fstop=3.5, shake=1.2, seed=4)
+        shoot(cam, t, vlerp((0.2, -7.6, 1.0), (0.5, -7.0, 1.05), u), (0.75, -3.0, 1.25), 26, fstop=4, focus=4.3, shake=1.2, seed=4)
 
     def s_8c(t):      # wide profile, prince in the foreground: the punishment crosses the frame to the wrong child
         books_rest()

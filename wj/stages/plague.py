@@ -5,7 +5,7 @@ from .. import sets, props, cast, stage
 from ..anim import ramp, pulse, lerp, vlerp, noise, orient, smooth
 from ..film import shoot
 
-OX = 300.0
+OX = 900.0
 
 
 def build(scene, cam):
@@ -57,13 +57,13 @@ def build(scene, cam):
         push(t)
         col.face(t, brow_down=0.6, frown=0.6, eye_squint=0.35, press=0.4)
         u = ramp(t, 65.1, 67.8)
-        shoot(cam, t, (X - 0.9, col.pos.y - 6.3 - 0.3 * u, 0.45), (X, col.pos.y - 1.0, 1.15), 24, shake=1.0, seed=2)
+        shoot(cam, t, (X - 1.9, col.pos.y - 6.0 - 0.3 * u, 1.05), (X + 0.1, col.pos.y - 0.6, 1.15), 28, shake=1.0, seed=2)
 
     def s_7b(t):      # side track at wheel height: the turning wheel and the load, his strain beyond
         push(t)
         eff = 0.5 + 0.5 * math.sin(t * 3.1)
         col.face(t, brow_down=0.8, grimace=0.35 * eff, eye_squint=0.5, snarl=0.3 * eff, press=0.3)
-        shoot(cam, t, (X + 2.5, col.pos.y - 1.9, 0.62), (X, col.pos.y - 1.0, 0.95), 35, fstop=3.5, shake=1.5, seed=3)
+        shoot(cam, t, (X - 2.75, col.pos.y - 2.3, 0.7), (X, col.pos.y - 0.9, 1.0), 30, fstop=3.5, shake=1.5, seed=3)
 
     def s_7c(t):      # low-angle close-up: bell up, the cry rolls down the street
         a = 70.3

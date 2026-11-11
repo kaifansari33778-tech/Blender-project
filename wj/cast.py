@@ -19,7 +19,8 @@ def _mk(name, seed, hats=(), **kw):
     a = Actor(h, seed=seed)
     top = h.height
     for hat, dz, rot in hats:
-        attach(hat, h, 'head', (0, 0.015, top + dz), rot)
+        tl = h.rest['head'][1]
+        attach(hat, h, 'head', (tl.x, tl.y + 0.01, top + dz), rot, scale=hat.get('s', 1.0))
     a.hats = [x[0] for x in hats]
     return a
 
@@ -97,10 +98,10 @@ def plague_collector(name='collector', seed=10):
 
 
 def prince():
-    return _mk('prince', 11, hats=[(props.crown(), -0.03, (0.08, 0, 0))], skin='skin_young_caucasian_male.jpg', eyes='eye_blue.jpg', age={'child': 0.85, 'young': 0.15}, weight=0.6, muscle=0.4, height=0.5,
-               items=['bob01', 'eyebrow001', 'rehmanpolanski_viking_tunic', 'rehmanpolanski_viking_pants', 'rehmanpolanski_viking_boots'],
+    return _mk('prince', 11, hats=[(props.crown(), -0.035, (0.1, 0, 0))], skin='skin_young_caucasian_male.jpg', eyes='eye_blue.jpg', age={'child': 0.85, 'young': 0.15}, weight=0.6, muscle=0.4, height=0.5,
+               items=['short01', 'eyebrow001', 'rehmanpolanski_viking_tunic', 'rehmanpolanski_viking_pants', 'rehmanpolanski_viking_boots'],
                tints={'rehmanpolanski_viking_tunic': T((0.75, 0.1, 0.12), flat=0.35, val=1.3), 'rehmanpolanski_viking_pants': T((0.9, 0.85, 0.7), flat=0.5, val=1.3),
-                      'rehmanpolanski_viking_boots': T((0.25, 0.12, 0.08)), 'bob01': T((1.0, 0.8, 0.5), sat=0.8, val=1.3)},
+                      'rehmanpolanski_viking_boots': T((0.25, 0.12, 0.08)), 'short01': T((1.0, 0.85, 0.6), sat=0.8, val=1.5)},
                details={'head/head-round': 0.6}, **MALE)
 
 

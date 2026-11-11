@@ -63,7 +63,7 @@ def build(scene, cam):
         cold = pulse(t, 26.0, 26.6, 27.5, 28.2)
         wom.face(t, brow_inner=0.8, brow_up=0.3 * cold, grimace=0.5 * cold, lips_part=0.4 * cold, eye_squint=0.3)
         u = ramp(t, 25.7, 28.2)
-        shoot(cam, t, vlerp((-0.45, -4.3, WATER + 0.11), (-0.3, -4.0, WATER + 0.2), u), vlerp((X0, -7.0, 0.1), (X0, -6.0, 0.25), u), 28, fstop=4, focus=2.2, shake=1.4, seed=3)
+        shoot(cam, t, vlerp((-1.3, -3.3, WATER + 0.5), (-1.1, -3.1, WATER + 0.6), u), vlerp((X0, -7.0, 0.35), (X0, -6.0, 0.4), u), 35, fstop=4, focus=3.2, shake=1.4, seed=3)
 
     def stand_in_water(t, raise_leg):
         y = -5.9
@@ -137,6 +137,6 @@ def build(scene, cam):
         coin.location = doc.palm('R', 0.09, 0.035).lerp(wom.palm('L', 0.07, 0.012), cdrop * cdrop)
         u = ramp(t, a, 33.7)
         mid = (wom.pos + doc.pos) / 2
-        shoot(cam, t, mid + vlerp((0.9, -2.6, 1.05), (-0.5, -2.7, 1.3), u), mid + vlerp((0.05, 0, 0.72), (0, 0, 0.95), u), lerp(45, 38, u), fstop=3.2, shake=1.2, seed=8)
+        shoot(cam, t, mid + vlerp((0.7, -3.4, 1.05), (-0.4, -3.3, 1.25), u), mid + vlerp((0.1, 0, 0.85), (0.1, 0, 1.0), u), 32, fstop=3.2, shake=1.2, seed=8)
 
     return [(23.2, 25.7, s_3a), (25.7, 28.2, s_3b), (28.2, 30.5, s_3c), (30.5, 33.7, s_3d)]

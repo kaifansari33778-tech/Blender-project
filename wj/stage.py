@@ -21,7 +21,7 @@ def new_scene(res=(720, 1280), samples=12, fps=24):
     s.render.fps = fps
     s.render.image_settings.file_format = 'JPEG'; s.render.image_settings.quality = 95
     s.view_settings.view_transform = 'AgX'
-    s.view_settings.look = 'AgX - Medium High Contrast'
+    s.view_settings.look = 'AgX - Punchy'
     cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
     s.collection.objects.link(cam); s.camera = cam
     cam.data.sensor_fit = 'VERTICAL'; cam.data.sensor_height = 24

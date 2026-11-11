@@ -295,13 +295,11 @@ def sewer(length=44.0):
     # daylight shafts through street grates
     for y in (7.0, -9.0, 20.0):
         light('SPOT', (0.3, y, 3.6), 9000, (1.0, 0.95, 0.85), size=0.05, rot=(0, 0, 0), spot=math.radians(26))
-        c = cyl(0.25, 3.1, (0.3, y, 1.75), mat('ray', e=0.012), r2=0.85, seg=16, caps=False)
-        c.visible_shadow = False
         for k in range(-3, 4):
             box((0.03, 0.7, 0.03), (0.3 + k * 0.1, y, 3.25), mat('metal', c=(0.03, 0.03, 0.03)))
     # soft cool fill so the brickwork stays readable
     for y in range(-18, 20, 6):
-        light('POINT', (0, y, 2.4), 60, (0.6, 0.72, 1.0), size=1.0)
+        light('POINT', (0, y, 2.4), 170, (0.62, 0.74, 1.0), size=1.0)
     r = random.Random(4)
     junk = []
     for i in range(30):
@@ -374,12 +372,12 @@ def graveyard(grave=True):
         return 0.12 * mn.noise(Vector((x * 0.12, y * 0.12, 1))) + 0.02 * mn.noise(Vector((x * 0.9, y * 0.9, 4)))
     hole = (-0.5, 0.5, -1.1, 1.1) if grave else None
     g = grid(90, 90, 300, 300, (lambda x, y: hf(x, y) if not (grave and abs(x) < 0.9 and abs(y) < 1.5) else 0.0), mat('grass'), name='land', hole=hole)
-    near = grid(12, 12, 40, 40, lambda x, y: hf(x, y) + 0.004 if not (abs(x) < 2.3 and abs(y) < 2.6) else -0.02, mat('grass'), name='near')
+    near = grid(12, 12, 40, 40, lambda x, y: hf(x, y) + 0.004 if not (abs(x) < 2.3 and abs(y) < 2.6) else -0.02, mat('grass'), name='near', hole=hole)
     grass_patch(near, 50000, 0.12, color=(0.07, 0.15, 0.04))
     if grave:
         d = mat('dirt', c=(0.16, 0.11, 0.07), bscale=25, bump=1.0)
-        for (sz, lc) in (((0.06, 2.2, 1.3), (-0.53, 0, -0.65)), ((0.06, 2.2, 1.3), (0.53, 0, -0.65)), ((1.0, 0.06, 1.3), (0, -1.13, -0.65)), ((1.0, 0.06, 1.3), (0, 1.13, -0.65)),
-                         ((1.1, 2.3, 0.06), (0, 0, -1.3))):
+        for (sz, lc) in (((0.06, 2.5, 1.3), (-0.63, 0, -0.65)), ((0.06, 2.5, 1.3), (0.63, 0, -0.65)), ((1.3, 0.06, 1.3), (0, -1.23, -0.65)), ((1.3, 0.06, 1.3), (0, 1.23, -0.65)),
+                         ((1.3, 2.5, 0.06), (0, 0, -1.3))):
             box(sz, lc, d)
         sphere(0.75, (1.45, 0.2, -0.1), d, scale=(1.0, 1.5, 0.7), seg=20, noise=0.12, seed=3, name='mound')
         sphere(0.5, (-1.25, -0.9, -0.12), d, scale=(1.0, 1.2, 0.55), seg=16, noise=0.1, seed=5, name='mound2')
@@ -484,7 +482,7 @@ def palace():
             box((0.05, ww, 0.04), (-W / 2 - 0.3, y, z0 + (z1 - z0) * k / 8), lead)
         box((0.9, ww + 0.3, 0.14), (-W / 2 - 0.2, y, z0 - 0.07), mat('stone', c=(0.66, 0.62, 0.55)))
         # sun shaft
-        c = box((0.02, ww * 0.95, 9.5), (-W / 2 + 3.2, y + 1.2, 3.6), mat('ray', e=0.05, c=(1, 0.9, 0.7)), rot=(0, math.radians(-52), math.radians(20)))
+        c = box((0.02, ww * 0.95, 9.5), (-W / 2 + 3.2, y + 1.2, 3.6), mat('ray', e=0.02, c=(1, 0.9, 0.7)), rot=(0, math.radians(-52), math.radians(20)))
         c.visible_shadow = False; c.visible_diffuse = False; c.visible_glossy = False
     # ceiling + beams
     box((W + 1.2, L + 1.2, 0.3), (0, 0, H + 0.15), mat('wood', c=(0.16, 0.1, 0.06)))

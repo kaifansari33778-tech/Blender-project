@@ -12,23 +12,24 @@ def build(scene, cam):
     day = scene.world
     moon = sets.night_sky(scene, strength=0.09, exposure=1.3)
     night = scene.world
-    moon.data.energy = 2.4
+    moon.data.energy = 9.0
     dig = cast.snatcher(); look = cast.tosher('lookout', 31)
     wid = cast.towns_woman('widow', 32, skirt=(0.06, 0.06, 0.07), top=(0.08, 0.08, 0.09), hair='long01', old=0.3)
     man = cast.gentleman('mourner', 33, black=True)
-    shovel = props.shovel(); lan = props.lantern(energy=130); lamp = bpy.data.objects[lan['light']]
+    shovel = props.shovel(); lan = props.lantern(energy=260); lamp = bpy.data.objects[lan['light']]
     body = props.shroud(1.7, seed=3)
     clods = props.clods(9)
     cage = sets.mortsafe((7.5, -5.0, 0.0))
     stone = sets.headstone((7.5, -3.75, 0), __import__('random').Random(2), lean=(0.02, 0, 0))
     MS = Vector((7.5, -5.0, 0))
-    fill = None
+    from ..world import light as _light
+    _light('AREA', (0, 0.5, 4.5), 500, (0.6, 0.72, 1.0), size=6)
 
     def mode(is_day):
         scene.world = day if is_day else night
         scene.view_settings.exposure = -0.2 if is_day else 1.3
-        moon.data.energy = 0.0 if is_day else 2.4
-        lamp.data.energy = 0.0 if is_day else 130 * (1 + 0.1 * noise(scene.frame_current / 24, 1, 11))
+        moon.data.energy = 0.0 if is_day else 9.0
+        lamp.data.energy = 0.0 if is_day else 260 * (1 + 0.1 * noise(scene.frame_current / 24, 1, 11))
         bpy.data.objects['moon'].hide_render = is_day
 
     def away(*actors):
@@ -84,7 +85,7 @@ def build(scene, cam):
     def s_6a(t):      # crane up over a leaning headstone: moonlit churchyard, two figures where nobody should be
         mode(False); away(wid, man)
         body.location = (0, 0, -50)
-        digger(t, 54.2, (0, -0.1, -1.24))
+        digger(t, 54.2, (0, -0.1, -1.16))
         lookout(t, (1.2, -1.9, 0), math.radians(-150))
         u = ramp(t, 54.6, 57.0)
         shoot(cam, t, vlerp((4.6, -6.2, 0.45), (3.6, -5.6, 2.3), u), vlerp((0.3, 0, 0.6), (0.2, 0.3, 0.5), u), lerp(26, 30, u), shake=0.8)
@@ -92,9 +93,9 @@ def build(scene, cam):
     def s_6b(t):      # from down in the grave looking up: the spade comes at us, moon behind his shoulder
         mode(False); away(wid, man)
         body.location = (0, 0, -50)
-        digger(t, 56.75, (0, -0.25, -1.24))
+        digger(t, 56.75, (0, -0.25, -1.16))
         lookout(t, (0.95, 1.5, 0), math.radians(160))
-        shoot(cam, t, (-0.18, 0.92, -1.02), (0.05, -0.3, 0.25), 20, shake=1.2, seed=3)
+        shoot(cam, t, (-0.2, 0.95, -0.9), (0.05, -0.3, 0.3), 20, shake=1.2, seed=3)
 
     def s_6c(t):      # tracking side shot past the stones: the body leaves on their shoulders
         mode(False); away(wid, man)
@@ -127,8 +128,8 @@ def build(scene, cam):
         for c in clods:
             c.location = (0, 0, -50)
         a = 62.0
-        wid.place(MS + Vector((-0.95, 0.15, 0)), math.radians(-95)); wid.stand(t, 0.6)
-        man.place(MS + Vector((-1.05, -0.85, 0)), math.radians(-70)); man.stand(t, 0.6)
+        wid.place(MS + Vector((-0.95, 0.15, 0)), math.radians(95)); wid.stand(t, 0.6)
+        man.place(MS + Vector((-1.05, -0.85, 0)), math.radians(70)); man.stand(t, 0.6)
         reach = ramp(t, a + 0.2, a + 1.3)
         bar = MS + Vector((-0.48, 0.25, 0.74))
         wid.spine(rx=0.12 + 0.2 * reach); wid.head(rx=0.35)
