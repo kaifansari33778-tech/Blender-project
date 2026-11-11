@@ -78,9 +78,9 @@ def build(scene, cam):
         col.grip('R', hp, col.D((0.5 * ring, 0.3 * ring, -1)), col.D((-1, 0, 0))); col.elbow('R', (1.0, -0.2, 1.2))
         orient(bell, col.palm('R', 0.02, 0.03) + col.D((0.5 * ring, 0.3 * ring, -1)).normalized() * 0.19, z=-col.D((0.5 * ring, 0.3 * ring, -1)))
         # "Bring out your dead": one jaw pulse per word
-        words = [(71.18, 71.42, 0.55), (71.45, 71.66, 0.75), (71.7, 71.9, 0.5), (71.95, 72.5, 1.0)]
+        words = [(71.4, 71.68, 0.55), (71.72, 71.93, 0.75), (71.96, 72.1, 0.5), (72.14, 72.62, 1.0)]
         jaw = max(pulse(t, w0 - 0.05, w0 + 0.07, w1 - 0.06, w1 + 0.08) * k for w0, w1, k in words)
-        shout = pulse(t, 70.9, 71.2, 72.5, 72.9)
+        shout = pulse(t, 71.1, 71.4, 72.6, 72.9)
         col.spine(rx=-0.08 * shout); col.head(rx=-0.3 * shout - 0.05, rz=0.25 * math.sin((t - a) * 1.4))
         col.face(t, brow_down=0.5, brow_inner=0.5, eye_squint=0.3 + 0.2 * shout, jaw=0.15 + 0.85 * jaw, wide=0.3 * jaw, upper_lip=0.3 * jaw, neck=0.8 * jaw, snarl=0.3 * jaw, lips_part=0.4 * shout)
         toss.location = (0, 0, -50); mate.place((60, 60, -20), 0)

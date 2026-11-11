@@ -100,7 +100,7 @@ def build(scene, cam):
         tutor_whips(t, hits, BP); boy_takes(t, hits); prince_watch(t)
         u = ramp(t, 0, 2.7)
         hd = boy.W((0, 0.15, 1.0))
-        shoot(cam, t, hd + vlerp((0.75, 1.75, 0.02), (0.55, 1.3, 0.0), u), hd + Vector((0.1, 0, 0.02)), 40, fstop=2.8, focus=lerp(1.95, 1.45, u), shake=1.2 + 4 * pulse(t, 2.1, 2.16, 2.2, 2.5))
+        shoot(cam, t, hd + vlerp((0.75, 1.75, 0.02), (0.55, 1.3, 0.0), u), hd + Vector((-0.1, 0, 0.0)), 40, fstop=2.8, focus=lerp(1.95, 1.45, u), shake=1.2 + 4 * pulse(t, 2.1, 2.16, 2.2, 2.5))
 
     def s_0b(t):      # reveal who earned it: slide past the boy's shoulder to the prince, untouched, amused
         books_rest()
