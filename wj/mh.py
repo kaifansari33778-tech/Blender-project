@@ -178,7 +178,7 @@ def skin_material(name, tex, age_bump=0.3):
     return m
 
 
-def item_material(name, meta, tint=None, sat=1.0, val=1.0, rough=0.85, kind='cloth', mix=1.0):
+def item_material(name, meta, tint=None, sat=1.0, val=1.0, rough=0.85, kind='cloth', mix=1.0, flat=0.0):
     """tint: rgb multiply applied to a desaturated texture (keeps painted wrinkles/seams)."""
     m, nt, b = _nodes(name)
     b.inputs['Roughness'].default_value = rough
@@ -188,6 +188,10 @@ def item_material(name, meta, tint=None, sat=1.0, val=1.0, rough=0.85, kind='clo
         hsv = nt.nodes.new('ShaderNodeHueSaturation'); hsv.inputs['Saturation'].default_value = sat
         hsv.inputs['Value'].default_value = val
         nt.links.new(col, hsv.inputs['Color']); col = hsv.outputs['Color']
+        if flat:
+            fl = nt.nodes.new('ShaderNodeMix'); fl.data_type = 'RGBA'
+            fl.inputs['Factor'].default_value = flat; fl.inputs['B'].default_value = (0.55, 0.55, 0.55, 1)
+            nt.links.new(col, fl.inputs['A']); col = fl.outputs['Result']
         if tint:
             mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'
             mx.inputs['Factor'].default_value = mix

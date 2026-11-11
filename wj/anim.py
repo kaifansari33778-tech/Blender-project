@@ -90,6 +90,7 @@ class Actor:
         self.arm_len = (self.head0['wrist.L'] - self.head0['upperarm01.L']).length
         self.leg_len = (self.head0['foot.L'] - self.head0['upperleg01.L']).length
         self._pel = (Vector((0, 0, 0)), Matrix.Identity(3))
+        self.hs = {}
         self._constraints()
         self.reset()
 
@@ -198,6 +199,7 @@ class Actor:
         f = self._d(fwd, world); n = self._d(palm, world)
         n = (n - f * n.dot(f)).normalized()
         t = f.cross(n)
+        self.hs[s] = (e.location.copy(), f, n, t)
         f0, n0, t0 = self.hf[s]
         F = Matrix((f, n, t)).transposed(); F0 = Matrix((f0, n0, t0)).transposed()
         e.rotation_euler = (F @ F0.transposed() @ self.R['wrist.' + s]).to_euler()
@@ -354,3 +356,49 @@ class Actor:
         sw = math.sin(cyc + math.pi / 2) * swing * moving
         self.arms_relaxed(t, arms, swing=sw)
         return d
+
+    def palm(self, s, along=0.085, out=0.03):
+        """world position of the palm centre (from the last hand() call)"""
+        p, f, n, t = self.hs[s]
+        return p + f * along + n * out
+
+    def bone_world(self, bone, u=0.5, off=(0, 0, 0)):
+        """world position of a point along a posed bone (+ offset in ACTOR-REST axes rotated with the bone)"""
+        bpy.context.view_layer.update()
+        pb = self.arm.pose.bones[bone]
+        M = self.arm.matrix_world @ pb.matrix
+        local = Vector((0, pb.bone.length * u, 0)) + self.R[bone].inverted() @ Vector(off)
+        return M @ local
+
+    def grip(self, s, pos, d, n, world=True):
+        """Hold a handle: wrist at pos, handle pointing along d (out of the thumb side), palm facing n."""
+        d = self._d(d, world); n = self._d(n, world)
+        f = n.cross(d) if s == 'R' else d.cross(n)
+        self.hand(s, pos if world else self.W(pos), fwd=f, palm=n, world=True)
+        self.fingers(s, 0.85, thumb=0.6)
+
+    def head_pos(self):
+        bpy.context.view_layer.update()
+        return self.arm.matrix_world @ self.arm.pose.bones['head'].tail
+
+
+def orient(o, pos, z=(0, 0, 1), y=(0, 1, 0)):
+    """Place prop: local Z -> z, local Y -> y (orthonormalised)."""
+    z = Vector(z).normalized(); y = Vector(y)
+    y = (y - z * y.dot(z))
+    y = y.normalized() if y.length > 1e-6 else z.orthogonal().normalized()
+    x = y.cross(z)
+    M = Matrix((x, y, z)).transposed().to_4x4()
+    M.translation = Vector(pos)
+    o.matrix_world = M
+
+
+def attach(o, human, bone, loc, rot=(0, 0, 0), scale=1.0):
+    """Rigidly attach prop to a bone; loc/rot given in ACTOR REST space (armature coords)."""
+    arm = human.arm
+    b = arm.data.bones[bone]
+    P = b.matrix_local @ Matrix.Translation((0, b.length, 0))
+    o.parent = arm; o.parent_type = 'BONE'; o.parent_bone = bone
+    o.matrix_parent_inverse = Matrix.Identity(4)
+    M = Matrix.Translation(Vector(loc)) @ Euler(rot).to_matrix().to_4x4() @ Matrix.Scale(scale, 4)
+    o.matrix_basis = P.inverted() @ M
