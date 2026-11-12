@@ -308,7 +308,7 @@ def main():
     fc = (f"[0:v]scale=1080:1920:flags=lanczos,unsharp=5:5:0.6:5:5:0.0,ass='{ass}',format=yuv420p[v];"
           "[1:a]loudnorm=I=-13:TP=-1.0:LRA=9,aresample=48000[vo];[2:a]volume=-17dB,aresample=48000[fx];[vo][fx]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.97[a]")
     cmd = ['ffmpeg', '-v', 'error', '-y', '-framerate', str(FPS), '-i', os.path.join(seq, '%05d.jpg'), '-i', vo, '-i', sfx, '-filter_complex', fc, '-map', '[v]', '-map', '[a]',
-           '-c:v', 'libx264', '-crf', '17', '-preset', 'slow', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-t', str(DUR), '-movflags', '+faststart', out]
+           '-c:v', 'libx264', '-crf', '22', '-preset', 'slow', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-t', str(DUR), '-movflags', '+faststart', out]
     subprocess.run(cmd, check=True)
     print('wrote', out)
 
