@@ -85,12 +85,13 @@ def cards_at(t):
     C.append(Card(ROOF, 0, 7.5, 5.9, y=3.92, shadow=0, alpha=seg(t, .6, .8)))
     C.append(Card(SIGN, 0, 7.45, 3.6, y=4.45, shadow=0, tilt=-popup(t, 0.7, .4) * .9))
     # ---- labels standing in the scene
-    k1 = back(seg(t, T('nineteen') - .05, T('nineteen') + .25), 1.8)
+    ko = 1 - smooth(seg(t, 4.45, 4.7))
+    k1 = back(seg(t, T('nineteen') - .05, T('nineteen') + .25), 1.8) * ko
     if k1 > 0: C.append(Card(Y06, -0.1, 7.3, 2.5 * k1, y=6.05 + 2 * (1 - k1), shadow=0, fog=False, blur=0))
-    k2 = back(seg(t, T_HUMAN, T_HUMAN + .22), 1.8)
+    k2 = back(seg(t, T_HUMAN, T_HUMAN + .22), 1.8) * ko
     if k2 > 0: C.append(Card(HUMAN, 0.75, 7.3, 4.0 * k2, y=5.2, shadow=0, fog=False, blur=0))
     k3 = seg(t, T_ZOO - .1, T_ZOO)
-    if k3 > 0: C.append(Card(ZOO, 0, 7.2, 3.6 * lerp(2.4, 1, k3 * k3), y=0.12, shadow=0, fog=False, blur=0, alpha=min(1, k3 * 2)))
+    if k3 > 0 and ko > 0.02: C.append(Card(ZOO, 0, 7.2, 3.6 * lerp(2.4, 1, k3 * k3) * ko, y=0.12, shadow=0, fog=False, blur=0, alpha=min(1, k3 * 2)))
     # ---- the crowd (seen from behind): pops up row by row, shuffles; balloons, parasols, a press camera
     for i, (x, z, pi, hgt, ph) in enumerate(CROWD):
         w = hgt * PEOPLE[pi].shape[1] / PEOPLE[pi].shape[0]; tl = popup(t, 0.15 + (7.5 + z) * 0.045, .4)
