@@ -145,6 +145,20 @@ def text_sprite(txt, size, col=INK, pad=20, squeeze=0.8, distress=0.5, seed=0, t
     return rgba(np.broadcast_to(col, (h, w, 3)), a.astype(np.float32))
 
 
+_WG = {}
+def wave(spr, t, amp=16.0, wl=300.0, speed=5.0, pin='l'):
+    """Cloth ripple: displace + shade a sprite so it looks like a flag flowing in the wind."""
+    h, w = spr.shape[:2]
+    if (h, w) not in _WG: _WG[(h, w)] = np.mgrid[0:h, 0:w].astype(np.float32)
+    yy, xx = _WG[(h, w)]
+    k = (xx / w) ** 0.8 if pin == 'l' else np.float32(1.0)
+    ph = xx / wl * 6.283 + yy / (wl * 3.1) * 6.283 - t * speed
+    dy = amp * np.sin(ph) * k; dx = amp * 0.35 * np.cos(ph * 0.7 + 1) * k
+    out = cv2.remap(spr, xx + dx, yy + dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    out[..., :3] *= (1 + 0.22 * np.cos(ph) * k)[..., None]
+    return out
+
+
 def with_alpha(spr, k):
     o = spr.copy(); o[..., 3] *= k; return o
 
@@ -186,20 +200,32 @@ class Frame:
             h, w = spr.shape[:2]
             pts = (M[:, :2] @ np.array([[0, w, w, 0], [0, 0, h, h]], np.float32)) + M[:, 2:3]
             if pts[0].max() < -60 or pts[0].min() > W + 60 or pts[1].max() < -60 or pts[1].min() > H + 60: return
-        pm = spr.copy(); pm[..., :3] *= pm[..., 3:4]
-        lay = cv2.warpAffine(pm, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP if wrap else cv2.BORDER_CONSTANT, borderValue=0)
         sig = s.dof * abs(depth - s.focus) * math.sqrt(max(s.cam.z, .2)) if blur is None else blur
+        z = s.cam.z
+        if wrap:
+            x0, y0, x1, y1 = 0, 0, W, H
+        else:
+            pad = int(3 * sig + (abs(sh_off[0]) + abs(sh_off[1]) + 30) * z * (1 if shadow else 0) + 4)
+            x0, y0 = max(0, int(pts[0].min()) - pad), max(0, int(pts[1].min()) - pad)
+            x1, y1 = min(W, int(pts[0].max()) + pad + 1), min(H, int(pts[1].max()) + pad + 1)
+            if x1 - x0 < 2 or y1 - y0 < 2: return
+            M = M.copy(); M[0, 2] -= x0; M[1, 2] -= y0
+        pm = spr.copy(); pm[..., :3] *= pm[..., 3:4]
+        det = abs(M[0, 0] * M[1, 1] - M[0, 1] * M[1, 0])
+        if det < 0.2 and not wrap:                              # heavy minification: prefilter to avoid shimmer
+            pm = cv2.GaussianBlur(pm, (0, 0), min(6.0, 0.45 / math.sqrt(max(det, 1e-4))))
+        lay = cv2.warpAffine(pm, M, (x1 - x0, y1 - y0), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP if wrap else cv2.BORDER_CONSTANT, borderValue=0)
         if sig > 0.6: lay = cv2.GaussianBlur(lay, (0, 0), sig)
+        reg = s.c[y0:y1, x0:x1]
         a = lay[..., 3:4] * alpha
         if shadow and not wrap:
-            z = s.cam.z
             Ms = np.float32([[1, 0, sh_off[0] * z], [0, 1, sh_off[1] * z]])
-            sh = cv2.warpAffine(lay[..., 3], Ms, (W, H))
+            sh = cv2.warpAffine(lay[..., 3], Ms, (x1 - x0, y1 - y0))
             sh = cv2.GaussianBlur(sh, (0, 0), 9 * z + sig)
-            s.c *= (1 - shadow * alpha * sh)[..., None]
+            reg *= (1 - shadow * alpha * sh)[..., None]
         rgb = lay[..., :3] * alpha
         if tint is not None: rgb = rgb * tint
-        s.c = s.c * (1 - a) + rgb
+        reg[:] = reg * (1 - a) + rgb
 
     def quad(s, pts, col, alpha=1.0):
         """Filled screen-space polygon (particles)."""
@@ -263,8 +289,8 @@ def zoom_blur(img, amt, n=10):
 
 _yy, _xx = np.mgrid[0:H, 0:W].astype(np.float32)
 _r2 = ((_xx - W / 2) / (W * 0.78)) ** 2 + ((_yy - H * 0.47) / (H * 0.62)) ** 2
-_VIG = np.clip(1.12 - _r2 * 0.95, 0.12, 1.12)[..., None]
-_TS = np.clip((np.abs(_yy - H * 0.5) / (H * 0.5) - 0.55) / 0.45, 0, 1)[..., None]
+_VIG = np.clip(1.12 - _r2 * 0.72, 0.25, 1.12)[..., None]
+_TS = np.clip((np.abs(_yy - H * 0.5) / (H * 0.5) - 0.80) / 0.20, 0, 1)[..., None]
 _WARM = np.array([1.08, 0.97, 0.80], np.float32)
 _grng = np.random.default_rng(11)
 _GRAIN = [cv2.resize(_grng.normal(0, 1, (H // 2 + 2, W // 2 + 2)).astype(np.float32), (W, H), interpolation=cv2.INTER_LINEAR)[..., None] for _ in range(6)]

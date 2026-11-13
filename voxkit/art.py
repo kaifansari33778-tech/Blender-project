@@ -443,3 +443,181 @@ def collage_man(head_spr, head_h=250):
     out = np.zeros((body.shape[0] + top, W_, 4), np.float32)
     paste(out, body, (W_ - body.shape[1]) // 2, top)
     return paste(out, hd, (W_ - hd.shape[1]) // 2, 0)
+
+
+# ------------------------------------------------------------------ prints, stickers, small drawn props
+def photo_print(src, crop=None, w=560, border=22, cell=4.5, seed=0, tint=PAPER_LT, caption_h=0):
+    """A rectangular halftone photo print with a white paper border (optionally a deeper bottom, polaroid style)."""
+    img = cv2.imread(src) if isinstance(src, str) else src
+    if crop: x, y, cw, ch = crop; img = img[y:y + ch, x:x + cw]
+    h = int(w * img.shape[0] / img.shape[1]); img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255
+    lo, hi = np.percentile(g, (2, 98)); g = np.clip((g - lo) / max(hi - lo, 1e-3), 0, 1) ** 0.95 * 0.9 + 0.05
+    inner = ink_on_paper(halftone(g, cell, 45, 1.05), col=tint, seed=seed)
+    H_, W_ = h + border * 2 + caption_h, w + border * 2
+    rgb = paper(H_, W_, np.array([.95, .93, .86], np.float32), seed + 1, 0.03, 0.07)
+    rgb[border:border + h, border:border + w] = inner
+    return rgba(rgb, torn(H_, W_, 3, 1, seed + 2))
+
+
+def sticker(path, size=300, border=14, seed=0, card=False):
+    """Logo / seal as a die-cut colour sticker (or a white card when the art has no alpha)."""
+    im = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    if im.ndim == 2: im = cv2.cvtColor(im, cv2.COLOR_GRAY2BGRA)
+    if im.shape[2] == 3: im = np.dstack([im, np.full(im.shape[:2], 255, np.uint8)])
+    k = size / max(im.shape[:2]); im = cv2.resize(im, None, fx=k, fy=k, interpolation=cv2.INTER_AREA).astype(np.float32) / 255
+    h, w = im.shape[:2]; P = border + 8
+    rgb = np.ones((h + 2 * P, w + 2 * P, 3), np.float32); a = np.zeros((h + 2 * P, w + 2 * P), np.float32)
+    white = paper(h + 2 * P, w + 2 * P, np.array([.95, .93, .86], np.float32), seed, 0.03, 0.07)
+    art_a = im[..., 3]; opaque = art_a.mean() > 0.97 or card
+    a[P:P + h, P:P + w] = art_a
+    rgb = white.copy(); reg = rgb[P:P + h, P:P + w]
+    tex = (0.9 + 0.1 * fbm(h, w, 30, 3, seed + 1))[..., None]
+    reg[:] = reg * (1 - art_a[..., None]) + im[..., 2::-1] * tex * art_a[..., None]
+    if opaque:
+        outer = torn(h + 2 * P, w + 2 * P, 4, 1, seed + 2)
+    else:
+        kk = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (border * 2 + 1, border * 2 + 1))
+        outer = np.clip(cv2.GaussianBlur(cv2.dilate(a, kk), (0, 0), 2) * 3 - 1, 0, 1)
+    return rgba(np.clip(rgb, 0, 1), outer)
+
+
+def shape(pts_list, w, h, col, seed=0, holes=()):
+    """Paper cut to arbitrary polygons (pts in 0..1 units)."""
+    m = np.zeros((h, w), np.float32)
+    for pts in pts_list: cv2.fillPoly(m, [np.int32([(x * w, y * h) for x, y in pts])], 1.0, cv2.LINE_AA)
+    for pts in holes: cv2.fillPoly(m, [np.int32([(x * w, y * h) for x, y in pts])], 0.0, cv2.LINE_AA)
+    return rgba(paper(h, w, np.asarray(col, np.float32), seed, 0.05, 0.14), m)
+
+
+def crown(w=240, h=170):
+    return shape([[(0, 1), (0, .25), (.25, .6), (.5, 0), (.75, .6), (1, .25), (1, 1)]], w, h, YEL, 3)
+
+
+def heart(s=260, col=RED):
+    pts = [(0.5 + 0.5 * (16 * math.sin(a) ** 3) / 17, 0.45 - 0.5 * (13 * math.cos(a) - 5 * math.cos(2 * a) - 2 * math.cos(3 * a) - math.cos(4 * a)) / 17) for a in np.linspace(0, 2 * math.pi, 80)]
+    return shape([pts], s, s, col, 4)
+
+
+def glass(w=170, h=260):
+    return shape([[(0, 0), (1, 0), (.56, .5), (.56, .9), (.85, 1), (.15, 1), (.44, .9), (.44, .5)]], w, h, ORANGE, 5)
+
+
+def car(w=620, h=230):
+    body = [(0, .78), (.02, .5), (.2, .44), (.32, .1), (.7, .1), (.84, .44), (.98, .52), (1, .78)]
+    win = [[(.35, .18), (.5, .18), (.5, .42), (.26, .42)], [(.54, .18), (.68, .18), (.78, .42), (.54, .42)]]
+    c = shape([body], w, h, np.array([.10, .09, .08]), 6, holes=win)
+    for cx in (.22, .78):
+        cv2.circle(c, (int(cx * w), int(.78 * h)), int(.2 * h), (.04, .04, .04, 1), -1, cv2.LINE_AA); cv2.circle(c, (int(cx * w), int(.78 * h)), int(.09 * h), (.6, .56, .48, 1), -1, cv2.LINE_AA)
+    return c
+
+
+def crate(s=200, seed=0):
+    rgb = paper(s, s, np.array([.62, .47, .30], np.float32), seed, 0.06, 0.2)
+    for k in (.06, .94): cv2.line(rgb, (0, int(s * k)), (s, int(s * k)), (.3, .22, .14), 5); cv2.line(rgb, (int(s * k), 0), (int(s * k), s), (.3, .22, .14), 5)
+    cv2.line(rgb, (0, s // 2), (s, s // 2), (.93, .88, .70), int(s * .12)); cv2.line(rgb, (s // 2, 0), (s // 2, s), (.93, .88, .70), int(s * .12))
+    return rgba(rgb, torn(s, s, 3, 1, seed + 1))
+
+
+def folder(w=520, h=380):
+    f = shape([[(0, .12), (.08, 0), (.4, 0), (.46, .12), (1, .12), (1, 1), (0, 1)]], w, h, np.array([.80, .66, .38]), 7)
+    cv2.rectangle(f, (int(w * .1), int(h * .3)), (int(w * .9), int(h * .32)), (.4, .3, .15, 1), -1)
+    return f
+
+
+def camera(w=260, h=190):
+    c = shape([[(0, .2), (.25, .2), (.33, 0), (.67, 0), (.75, .2), (1, .2), (1, 1), (0, 1)]], w, h, np.array([.12, .11, .10]), 8)
+    cv2.circle(c, (w // 2, int(h * .58)), int(h * .3), (.75, .72, .64, 1), -1, cv2.LINE_AA); cv2.circle(c, (w // 2, int(h * .58)), int(h * .2), (.05, .05, .05, 1), -1, cv2.LINE_AA)
+    cv2.circle(c, (int(w * .56), int(h * .5)), int(h * .05), (.95, .95, .9, 1), -1, cv2.LINE_AA)
+    return c
+
+
+def globe(s=700):
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2; rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / c
+    land = (fbm(s, s, 5, 4, 77) > 0.52).astype(np.float32)
+    g = 0.72 - 0.38 * land - 0.25 * rr ** 2
+    rgb = ink_on_paper(halftone(np.clip(g, 0, 1), 6.0), seed=9)
+    for k in (.33, .66, 1.0): cv2.ellipse(rgb, (int(c), int(c)), (int(c * k * .98), int(c * .98)), 0, 0, 360, tuple(float(v) for v in INK), 2, cv2.LINE_AA)
+    cv2.line(rgb, (0, int(c)), (s, int(c)), tuple(float(v) for v in INK), 2)
+    return rgba(rgb, np.clip((1 - rr) * c / 1.5, 0, 1))
+
+
+def reel(s=260):
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2; rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / c
+    a = np.clip((1 - rr) * c / 1.5, 0, 1); rgb = paper(s, s, np.array([.13, .12, .11], np.float32), 10, 0.08, 0.2)
+    for i in range(3):
+        th = i * 2.094; cv2.circle(rgb, (int(c + math.cos(th) * c * .5), int(c + math.sin(th) * c * .5)), int(c * .22), (.7, .66, .56), -1, cv2.LINE_AA)
+    cv2.circle(rgb, (int(c), int(c)), int(c * .12), (.8, .76, .66), -1, cv2.LINE_AA)
+    return rgba(rgb, a)
+
+
+def phone(w=170, h=320):
+    p = shape([[(0.08, 0), (.92, 0), (1, .05), (1, .95), (.92, 1), (.08, 1), (0, .95), (0, .05)]], w, h, np.array([.10, .09, .09]), 11)
+    cv2.rectangle(p, (int(w * .1), int(h * .09)), (int(w * .9), int(h * .86)), (.80, .78, .70, 1), -1)
+    return p
+
+
+def calendar(top, big, w=330, h=360, seed=0):
+    """Tear-off calendar leaf: red header band + big letterpress date."""
+    rgb = paper(h, w, np.array([.95, .93, .86], np.float32), seed, 0.03, 0.07)
+    rgb[:int(h * .27)] = paper(int(h * .27), w, RED, seed + 1, 0.05, 0.1)
+    for txt, y0, hh, col in ((top, 0.02, 0.23, np.array([.97, .94, .86], np.float32)), (big, 0.30, 0.66, INK)):
+        t = text_sprite(txt, 200, col, pad=6, squeeze=0.82, distress=0.2, seed=seed + 2)
+        k = min(h * hh / t.shape[0], w * 0.86 / t.shape[1]); t = cv2.resize(t, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+        th, tw = t.shape[:2]; x, y = (w - tw) // 2, int(h * y0 + (h * hh - th) / 2); a = t[..., 3:4]
+        rgb[y:y + th, x:x + tw] = rgb[y:y + th, x:x + tw] * (1 - a) + t[..., :3] * a
+    return rgba(rgb, torn(h, w, 4, 1, seed + 3))
+
+
+# ------------------------------------------------------------------ more flags (drawn), generic seal
+def _flag_base(rgb, seed):
+    h, w = rgb.shape[:2]
+    lum = 0.82 + 0.33 * fbm(h, w, 3, 4, seed + 1)
+    tex = paper(h, w, np.ones(3, np.float32), seed, 0.05, 0.08)
+    ht = 0.9 + 0.1 * (1 - halftone(np.full((h, w), 0.6, np.float32), 7.0))
+    return rgba(np.clip(rgb * tex * lum[..., None] * ht[..., None], 0, 1), torn(h, w, 9, 4, seed + 4))
+
+
+def flag_us(w=1200, h=640, seed=0):
+    rgb = np.zeros((h, w, 3), np.float32); red = np.array([.72, .13, .16], np.float32); wh = np.array([.95, .93, .86], np.float32); bl = np.array([.14, .17, .36], np.float32)
+    for i in range(13): rgb[int(i * h / 13):int((i + 1) * h / 13)] = red if i % 2 == 0 else wh
+    ch, cw = int(h * 7 / 13), int(w * 0.4); rgb[:ch, :cw] = bl
+    for r in range(9):
+        for c in range(6 if r % 2 == 0 else 5):
+            x = cw * (c + (0.5 if r % 2 == 0 else 1.0)) / 6; y = ch * (r + 0.6) / 9.2
+            cv2.fillPoly(rgb, [_star(x, y, ch * 0.036, 0)], tuple(float(v) for v in wh), cv2.LINE_AA)
+    return _flag_base(rgb, seed + 20)
+
+
+def flag_tw(w=1200, h=800, seed=0):
+    rgb = np.zeros((h, w, 3), np.float32); rgb[:] = (.80, .10, .10); bl = (.05, .12, .50); wh = (.96, .94, .88)
+    rgb[:h // 2, :w // 2] = bl; cx, cy, R = w // 4, h // 4, h * 0.19
+    for i in range(12):
+        a = i * math.pi / 6
+        cv2.fillPoly(rgb, [np.int32([(cx + math.cos(a) * R, cy + math.sin(a) * R), (cx + math.cos(a + .26) * R * .55, cy + math.sin(a + .26) * R * .55), (cx + math.cos(a - .26) * R * .55, cy + math.sin(a - .26) * R * .55)])], wh, cv2.LINE_AA)
+    cv2.circle(rgb, (cx, cy), int(R * .55), bl, -1, cv2.LINE_AA); cv2.circle(rgb, (cx, cy), int(R * .47), wh, -1, cv2.LINE_AA)
+    return _flag_base(rgb, seed + 30)
+
+
+def flag_my(w=1200, h=600, seed=0):
+    rgb = np.zeros((h, w, 3), np.float32); red = (.78, .10, .12); wh = (.95, .93, .86); bl = (.05, .08, .40); ye = (.98, .80, .10)
+    for i in range(14): rgb[int(i * h / 14):int((i + 1) * h / 14)] = red if i % 2 == 0 else wh
+    ch, cw = int(h * 8 / 14), w // 2; rgb[:ch, :cw] = bl
+    cx, cy, R = int(cw * .42), ch // 2, ch * .36
+    cv2.circle(rgb, (cx, cy), int(R), ye, -1, cv2.LINE_AA); cv2.circle(rgb, (int(cx + R * .28), cy), int(R * .86), bl, -1, cv2.LINE_AA)
+    sx = cx + R * 0.75
+    pts = [(sx + math.cos(i * math.pi / 14) * (R * .62 if i % 2 == 0 else R * .26), cy + math.sin(i * math.pi / 14) * (R * .62 if i % 2 == 0 else R * .26)) for i in range(28)]
+    cv2.fillPoly(rgb, [np.int32(pts)], ye, cv2.LINE_AA)
+    return _flag_base(rgb, seed + 40)
+
+
+def seal(txt, s=320, col=(.14, .17, .36), seed=0):
+    """Generic round agency seal: ring, star, short letterpress initials (fallback when the real seal is unavailable)."""
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2; rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / c
+    rgb = paper(s, s, np.asarray(col, np.float32), seed, 0.05, 0.12)
+    ring = ((rr > .80) & (rr < .93))[..., None]; rgb = np.where(ring, paper(s, s, YEL * .9, seed + 1, 0.04, 0.1), rgb)
+    t = text_sprite(txt, int(s * .3), np.array([.95, .93, .86], np.float32), pad=4, squeeze=.9, distress=.15, seed=seed)
+    k = min(1.0, s * .6 / t.shape[1]); t = cv2.resize(t, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+    th, tw = t.shape[:2]; x, y = (s - tw) // 2, (s - th) // 2; a = t[..., 3:4]
+    rgb[y:y + th, x:x + tw] = rgb[y:y + th, x:x + tw] * (1 - a) + t[..., :3] * a
+    return rgba(rgb, np.clip((1 - rr) * c / 1.5, 0, 1))
