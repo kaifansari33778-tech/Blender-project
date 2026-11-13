@@ -72,7 +72,7 @@ class World:
         img[:] = img * (1 - m[..., None]) + g * m[..., None]
 
     def render(s, cam, cards, f=0, t=0.0, extra=None):
-        img = s.sky.copy()
+        img = (s.sky(t) if callable(s.sky) else s.sky).copy()
         s.draw_ground(img, cam)
         info = []
         for c in cards:
