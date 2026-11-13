@@ -2,7 +2,7 @@
 
 | # | Line |
 |---|---|
-| 1 | One actress. One secret meeting in the mountains. And the most wanted drug lord on Earth was finished. |
+| 1 | This woman got the world's most wanted drug lord caught. And she never even meant to. Here's how it happened. |
 | 2 | Joaquín Guzmán. El Chapo. Boss of the Sinaloa Cartel. He flooded America with cocaine, and he escaped prison twice. |
 | 3 | In 2014, marines cornered him in Culiacán. He slipped out through a tunnel hidden under a bathtub, and was caught days later at a beach hotel in Mazatlán. |
 | 4 | Mexico locked him inside Altiplano, its most secure prison. Seventeen months later, he walked into his shower and vanished, down a mile-long tunnel with a motorcycle on rails. |
