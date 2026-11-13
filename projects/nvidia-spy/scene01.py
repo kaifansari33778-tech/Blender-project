@@ -22,13 +22,19 @@ CANYON = np.zeros((2048, 2048, 4), np.float32)
 CANYON[:, :700] = art.wall(700, 2048, 5, 0.50, 'r'); CANYON[:, 1348:] = art.wall(700, 2048, 9, 0.44, 'l')
 CANYON = cv2.GaussianBlur(CANYON, (0, 0), 2.2)
 CAN_S = 3000 * par(1.2) / 2048
+FLAG = art.flag(); NVCARD = art.nv_card(); NVS = art.nv_sticker(); BILLS = [art.bill(seed=i) for i in range(3)]
+RAYS = art.rays(1800); RAYS_R = art.rays(1800, 12, art.RED, 0.55); RAYS_O = art.rays(1800, 16, ORANGE, 0.5)
+DOCS = [art.doc(seed=i) for i in range(3)]; TAPE = art.tape(); PIN = art.pin(); PIN_Y = art.pin(col=art.YEL)
+BLDG = [art.building(240 + 40 * i, 800 + 170 * i, seed=i) for i in range(3)]
+CLASS = art.stamp('CLASSIFIED', 120); SMALLCHIP = cv2.resize(CHIP, (150, 150), interpolation=cv2.INTER_AREA)
+_h = EYE.shape[0]; EYE_STRIP = EYE[_h // 2 - 520:_h // 2 + 520].copy(); EYE_STRIP[..., 3] = torn(1040, EYE.shape[1], 16, 6, 8, sides='tb')
 
 G = 2400                                   # zone B ground line
 BX, CX, DX = 3000, 3000, 6000
 T_SLAM, T_RIP, T_LAND, T_BAR2, T_STAMP, T_CHIP = 1.25, 2.46, 3.86, 5.02, 6.42, 7.72
-BURSTS = [Burst(T_SLAM, 0, 0, 46, 1100, 1, 0.3, size=20, puff=1.5, spread=1.6),
+BURSTS = [Burst(T_SLAM, 0, 0, 60, 1200, 1, 0.3, cols=(PAPER, PAPER_LT, art.RED, art.YEL), size=20, puff=1.5, spread=1.6),
           Burst(T_RIP, BX, 1100, 26, 700, 2, 0.5, size=15, puff=0.5),
-          Burst(T_LAND, BX + 250, G - 40, 60, 1000, 3, 1.0, size=18, puff=1.5),
+          Burst(T_LAND, BX + 250, G - 40, 70, 1000, 3, 1.0, cols=(PAPER, PAPER_LT, art.NVG, PAPER), size=18, puff=1.5),
           Burst(T_STAMP, CX, 5330, 34, 900, 4, 0.5, cols=(PAPER, ORANGE, PAPER_LT), size=14, puff=0.9, spread=1.5),
           Burst(T_CHIP, CX, 5770, 40, 900, 5, 0.6, cols=(ORANGE, PAPER, PAPER_LT), size=14, puff=0.9)]
 
@@ -66,10 +72,36 @@ SMILE = [(CX - 78 + 156 * i / 40 + _r.normal(0, 1.2), 4512 + 46 * math.sin(math.
 CIRC = [(CX + 330 * math.cos(a) * (1 + 0.03 * math.sin(3 * a)), 5770 + 300 * math.sin(a) * (1 + 0.04 * math.cos(2 * a)) + 6 * a) for a in np.linspace(-2.0, -2.0 + 2 * math.pi * 1.08, 90)]
 
 
+def floaters(fr, t, n=22):
+    """Out-of-focus paper scraps drifting close to the lens."""
+    lay = np.zeros((H // 2, W // 2, 4), np.float32); c = fr.cam
+    for i in range(n):
+        r = np.random.default_rng(1000 + i); bx, by = r.uniform(0, 3000), r.uniform(0, 4200); sz = r.uniform(10, 34) * min(c.z, 2.2); col = (PAPER, PAPER_LT, ORANGE, art.RED, PAPER)[i % 5]
+        x = ((bx - c.x * 1.7 * c.z + 40 * math.sin(t * .7 + i)) % (W + 500) - 250) / 2; y = ((by - c.y * 1.7 * c.z + t * (25 + 12 * (i % 4))) % (H + 500) - 250) / 2
+        a = r.uniform(0, 6.28) + t * r.uniform(-1.5, 1.5); cs, sn = math.cos(a), math.sin(a)
+        pts = np.int32([(x + (px * cs - py * sn) * sz / 2, y + (px * sn + py * cs) * sz / 2) for px, py in ((-1, -.6), (1, -.7), (.8, .7), (-1, .5))])
+        cv2.fillConvexPoly(lay, pts, (float(col[0]), float(col[1]), float(col[2]), 1.0), cv2.LINE_AA)
+    lay = cv2.resize(cv2.GaussianBlur(lay, (0, 0), 5), (W, H))
+    a = lay[..., 3:4] * 0.55
+    fr.c = fr.c * (1 - a) + lay[..., :3] * 0.55 * 0.8
+
+
+def pop(t, t0, d=0.22, s=2.0): return back(seg(t, t0, t0 + d), s)
+
+
 def eye_frame(t):
     sx, sy = shake(t, T_SLAM, 26)
     fr = Frame(Cam(sx, sy, lerp(1.0, 1.10, t / 1.6) * lerp(1, 0.55, ein(seg(t, 1.58, 1.9), 2))), dof=0)
-    fr.put(EYE, 0, 0, 0.8, shadow=0)
+    fr.put(FAR, 0, 0, 2.6, wrap=True, shadow=0, blur=0)
+    k = back(seg(t, 0.22, 0.52), 1.4)                                         # "Chinese" - the flag drops in behind
+    fr.put(FLAG, 360, lerp(-1900, -470, k), 1.22, rot=lerp(-0.16, -0.035, k), shadow=0.6, sh_off=(10, 26))
+    k2 = back(seg(t, 0.40, 0.70), 1.4)
+    fr.put(FLAG, -420, lerp(2300, 960, k2), 0.95, rot=lerp(0.3, 0.07, k2) + math.pi, shadow=0.6)
+    for i, (dx, dy, r0) in enumerate(((-330, 560, -.2), (300, 640, .15), (40, 800, -.05))):
+        kd = pop(t, 0.62 + i * 0.1, 0.25, 1.6)
+        if kd > 0: fr.put(DOCS[i], dx, dy + 500 * (1 - kd), 0.85, rot=r0 + (1 - kd), shadow=0.5)
+    fr.put(EYE_STRIP, 0, 0, 0.8, rot=0.012, shadow=0.7, sh_off=(0, 26))
+    for sxn in (-1, 1): fr.put(TAPE, sxn * 420, -400 * sxn, 1.2, rot=0.5 * sxn, shadow=0.25, sh_off=(3, 5))
     k = seg(t, T_SLAM - 0.11, T_SLAM)
     if k > 0:
         y = lerp(-1500, 0, k * k); sq = 1 + 0.10 * math.exp(-(t - T_SLAM) * 16) * (t >= T_SLAM)
@@ -78,53 +110,105 @@ def eye_frame(t):
     return fr.c
 
 
+CHART_UP = [(BX - 620 + i * 14 + _r.normal(0, 2), 900 - i * 9 - 60 * math.sin(i * .5) - (i > 30) * (i - 30) * 14) for i in range(42)]
+CRASH = [(BX + 130 + 250 * (i / 60) ** .6 + 55 * math.sin(i * .9) * (1 - i / 60), 520 + (G - 760) * (i / 60) ** 1.4) for i in range(61)]
+STRING1 = [(180 + (BX - 500) * i / 30, -420 + 500 * i / 30 + 260 * math.sin(math.pi * i / 30)) for i in range(31)]
+STRING2 = [(CX + 330 - 40 * math.sin(math.pi * i / 30), 4170 + 1500 * i / 30) for i in range(31)]
+
+
 def world_frame(t, cam):
     sx, sy = 0, 0
-    for t0, amp in ((T_LAND, 30), (T_STAMP, 22), (T_CHIP, 26), (T_RIP, 10)):
+    for t0, amp in ((T_LAND, 30), (T_STAMP, 22), (T_CHIP, 26), (T_RIP, 10), (1.98, 9)):
         a, b = shake(t, t0, amp); sx += a; sy += b
     cam = Cam(cam.x + sx, cam.y + sy, cam.z)
     fr = Frame(cam, dof=4.2)
     fr.put(FAR, 0, 0, 2.6, depth=3.0, wrap=True, blur=0, shadow=0)
     fr.put(CANYON, 0, 0, CAN_S, depth=1.2, wrap=True, shadow=0)
 
-    # ---- zone A: front page
-    if cam.x < 1900:
+    # ---- zone A: front page on the evidence board
+    if cam.x < 2300 and cam.y < 2500:
+        fr.put(FLAG, 330, -520, 0.62, rot=0.16, depth=0.35, shadow=0.5)
+        fr.put(DOCS[0], -390, -560, 0.9, rot=-0.2, depth=0.2); fr.put(DOCS[1], -400, 560, 0.95, rot=0.12, depth=0.2); fr.put(DOCS[2], 420, 520, 0.9, rot=-0.1, depth=0.2)
+        fr.put(BILLS[0], 430, 760, 0.8, rot=0.5, depth=0.1); fr.put(SMALLCHIP, -430, 820, 1.2, rot=-0.3, depth=0.1)
         fr.put(PAGE, 0, 0, 1.0, rot=0.02)
         fr.put(BAR, 0, -148, 0.25, rot=-0.012, shadow=0.6, sh_off=(4, 9))
+        for sxn in (-1, 1): fr.put(TAPE, sxn * 400, -610, 1.0, rot=0.6 * sxn, shadow=0.25, sh_off=(3, 5))
+        k = seg(t, 1.88, 1.98)
+        if k > 0: fr.put(CLASS, 60, 420, 0.62 * lerp(2.4, 1, k * k), rot=-0.2, alpha=k, shadow=0, depth=-0.02, blur=0)
+        stroke(fr, STRING1, 1.0, art.RED * 0.9, 5)
+        fr.put(PIN, 180, -420, 0.9, shadow=0.5, sh_off=(4, 8))
 
     # ---- zone B: the tower and the fall
     if 900 < cam.x and cam.y < 3600:
+        fr.put(RAYS, BX, 250, 1.5, rot=t * 0.35, depth=0.9, shadow=0, blur=2)
+        for i, (dx, dy) in enumerate(((-560, 0), (520, 120), (-250, 260))):
+            fr.put(BLDG[i], BX + dx, G - 200 + dy, 1.5, depth=0.75, anchor=(0.5, 1), shadow=0.35)
         fr.put(RIDGE_B, BX - 150, G - 330, 1.25, depth=0.7, anchor=(0.5, 0), shadow=0.3)
+        stroke(fr, CHART_UP, 1.0, art.NVG * 0.9, 12, depth=0.3)
+        k = seg(t, T_RIP + 0.05, T_RIP + 1.3)                                    # logo card rips off and falls too
+        fr.put(NVCARD, BX - 370 - 120 * k, 120 + 2300 * k ** 2, 0.62, rot=-0.09 - 2.4 * k ** 1.2, depth=0.2, shadow=0.55)
+        fr.put(PIN_Y, BX - 370, -30, 0.8, depth=0.2, shadow=0.4, sh_off=(4, 8), alpha=1 - seg(t, T_RIP, T_RIP + 0.1))
+        fr.put(NVS, BX + 380, 620, 0.8, rot=0.2 + 0.05 * math.sin(t * 3), depth=0.3)
         fr.put(T_BOT, BX, G + 20, 1.0, anchor=(0.5, 1), depth=0.05)
         k = seg(t, T_RIP, T_RIP + 1.25)
         topy = G + 20 - T_BOT.shape[0] + 70
         fr.put(T_TOP, BX - 330 * k * k, topy + 1500 * k ** 2.2, 1.0, rot=-1.15 * k ** 1.3 - 0.05 * math.sin(seg(t, T_RIP - .25, T_RIP) * 9) * (t < T_RIP), anchor=(0.5, 1), depth=0.05)
         feet = topy - T_TOP.shape[0] + 14
         ms = 0.92; mh = MAN.shape[0] * ms
+        kf = seg(t, T_RIP, T_LAND)
+        stroke(fr, CRASH, kf ** 0.8, ORANGE, 15)
+        if 0 < kf:                                                               # arrow head on the crash line
+            i = min(59, int(60 * kf ** 0.8)); (x0, y0), (x1, y1) = CRASH[max(0, i - 3)], CRASH[i]; a = math.atan2(y1 - y0, x1 - x0)
+            pts = [fr.w2s(x1 + math.cos(a + d) * L, y1 + math.sin(a + d) * L) for d, L in ((0, 60), (2.5, 48), (-2.5, 48))]
+            cv2.fillConvexPoly(fr.c, np.int32(pts), tuple(float(v) for v in ORANGE), cv2.LINE_AA)
+        for i in range(9):                                                       # banknotes shaken loose
+            r = np.random.default_rng(300 + i); t0 = T_RIP + r.uniform(0, .5); dt = t - t0
+            if dt > 0:
+                fr.put(BILLS[i % 3], BX + r.uniform(-420, 520) + 90 * math.sin(dt * 4 + i), r.uniform(200, 900) + 620 * dt + 240 * dt * dt, 0.55, rot=r.uniform(0, 6) + math.sin(dt * 5 + i) * 1.2,
+                       depth=(-0.35, 0.15, 0.4)[i % 3], sy=abs(math.cos(dt * 6 + i)) * .8 + .2, shadow=0.35)
         if t < T_RIP:
             wob = 0.05 * math.sin(seg(t, T_RIP - .3, T_RIP) * 10)
             fr.put(MAN, BX, feet, ms, rot=wob, anchor=(0.5, 0.965))
         else:
-            k = seg(t, T_RIP, T_LAND); kk = k ** 1.9
+            k = kf; kk = k ** 1.9
             bx = BX + 250 * eout(k, 1.6); by = lerp(feet - mh / 2, G - 95, kk) - 150 * math.sin(math.pi * min(1, k * 2.2)) * (k < 0.455)
             rot = 1.62 * eout(k, 1.3) + 0.6 * math.sin(k * 5) * (1 - k)
             if t > T_LAND: by += -26 * abs(math.sin((t - T_LAND) * 13)) * math.exp(-(t - T_LAND) * 7)
             fr.put(MAN, bx, by, ms, rot=rot)
         fr.put(RIDGE_A, BX, G - 60, 1.3, depth=-0.25, anchor=(0.5, 0), shadow=0.5, sh_off=(0, -18))
+        k = seg(t, T_LAND - 0.25, T_LAND + 0.1)                                  # logo sticker lands beside him
+        if k > 0: fr.put(NVS, BX - 150, lerp(G - 900, G + 120, k * k), 0.9, rot=lerp(2.5, -0.25, k), depth=-0.3, shadow=0.55)
+        fr.put(SMALLCHIP, BX + 520, G + 170, 1.3, rot=0.4, depth=-0.3); fr.put(BILLS[1], BX + 80, G + 330, 0.9, rot=-0.2, depth=-0.3)
         BURSTS[1].draw(fr, t); BURSTS[2].draw(fr, t)
 
     # ---- zone C: her, the smile, the deal
     if 1200 < cam.x < 5200 and cam.y > 3300:
-        fr.put(RIDGE_B, CX + 200, 4250, 1.3, depth=0.9, anchor=(0.5, 0), shadow=0.3)
+        fr.put(RAYS_R, CX, 4420, 1.45, rot=-t * 0.3, depth=0.95, shadow=0, blur=2)
+        fr.put(RIDGE_B, CX + 200, 4350, 1.3, depth=0.9, anchor=(0.5, 0), shadow=0.3)
+        k = pop(t, 4.84, 0.28, 1.8)
+        if k > 0:
+            fr.put(FLAG, CX + 300, 4170 + 300 * (1 - k), 0.46 * k, rot=0.14 + (1 - k), depth=0.4, shadow=0.5)
+            fr.put(PIN_Y, CX + 330, 4000, 0.8 * k, depth=0.4, shadow=0.4, sh_off=(4, 8))
+        for i, (dx, dy, r0) in enumerate(((-400, 4130, -.18), (-330, 4330, .1))):
+            k = pop(t, 4.95 + i * 0.12, 0.25, 1.6)
+            if k > 0: fr.put(DOCS[i + 1], CX + dx - 300 * (1 - k), dy, 0.7, rot=r0 - (1 - k), depth=0.4 - i * 0.1, shadow=0.45)
         k = back(seg(t, 4.66, 5.0), 1.6)
         fr.put(WOMAN, CX, lerp(5750, 4560, k), 1.0, rot=lerp(-0.10, 0.0, k))
         kb = eout(seg(t, T_BAR2 - 0.1, T_BAR2), 2)
         if kb > 0: fr.put(BAR, lerp(CX - 1400, CX, kb), 4372, 0.37, rot=-0.01, sy=0.78, shadow=0.6, sh_off=(5, 12))
         stroke(fr, SMILE, eio(seg(t, 5.52, 5.88), 2), ORANGE * 1.05, 14)
         fr.put(RIDGE_A, CX, 4960, 1.45, depth=-0.12, anchor=(0.5, 0), shadow=0.55, sh_off=(0, -20), tint=0.92)
+        for i, (dx, dy, r0) in enumerate(((-360, 5290, .35), (350, 5400, -.3), (-300, 5450, -.15), (330, 5250, .2))):   # cash fans out under the label
+            k = eout(seg(t, T_STAMP + 0.02 + i * 0.05, T_STAMP + 0.3 + i * 0.05), 3)
+            if k > 0: fr.put(BILLS[i % 3], CX + dx * k, lerp(5330, dy, k), 0.8, rot=r0 * k * 2, depth=-0.13, shadow=0.45, blur=0)
         k = seg(t, T_STAMP - 0.12, T_STAMP)
         if k > 0:
             fr.put(LABEL, CX, 5330, 0.84 * lerp(3.0, 1.0, k * k) * (1 + 0.06 * math.exp(-(t - T_STAMP) * 18) * (t >= T_STAMP)), rot=-0.055, depth=-0.14, alpha=min(1, k * 2.5), shadow=0.6, blur=0)
+        k = pop(t, 7.2, 0.25)
+        if k > 0: fr.put(NVS, CX - 380, 5720, 0.72 * k, rot=-0.25, depth=-0.14, shadow=0.5, blur=0)
+        for i in range(6):                                                      # the order multiplies
+            k = pop(t, 8.42 + i * 0.07, 0.16, 2.6)
+            if k > 0: fr.put(SMALLCHIP, *((CX + 400 + 16 * (i % 2), 5570 + i * 125) if i < 4 else (CX - 400 + 20 * (i % 2), 5900 + (i - 4) * 120)), 0.8 * k, rot=0.12 * (-1) ** i, depth=-0.14, shadow=0.5, blur=0)
         k = seg(t, T_CHIP - 0.13, T_CHIP)
         if k > 0:
             fr.put(CHIP, CX, 5770, 0.95 * lerp(3.4, 1.0, k * k) * (1 + 0.07 * math.exp(-(t - T_CHIP) * 18) * (t >= T_CHIP)), rot=lerp(0.9, 0.09, k), depth=-0.14, alpha=min(1, k * 2.5), shadow=0.65, sh_off=(16, 26), blur=0)
@@ -133,8 +217,15 @@ def world_frame(t, cam):
 
     # ---- zone D: sixty seconds
     if cam.x > 4000:
-        fr.put(RIDGE_B, DX - 200, 4500, 1.3, depth=0.9, anchor=(0.5, 0), shadow=0.3)
-        fr.put(RIDGE_A, DX, 5900, 1.45, depth=-0.3, anchor=(0.5, 0), shadow=0.5, sh_off=(0, -20))
+        fr.put(RAYS_O, DX, 5150, 1.5, rot=t * 0.9, depth=0.6, shadow=0, blur=2)
+        fr.put(RIDGE_B, DX - 200, 4300, 1.3, depth=0.9, anchor=(0.5, 0), shadow=0.3, alpha=0.0)
+        fr.put(RIDGE_A, DX, 5950, 1.45, depth=-0.3, anchor=(0.5, 0), shadow=0.5, sh_off=(0, -20))
+        orb = [(NVS, .62), (SMALLCHIP, 1.1), (FLAG, .2), (BILLS[0], .6), (DOCS[0], .42), (SMALLCHIP, 1.0), (NVS, .5), (BILLS[2], .55)]
+        for i, (sp, sc) in enumerate(orb):
+            k = pop(t, 9.5 + i * 0.09, 0.22, 2.4)
+            if k > 0:
+                a = i / len(orb) * 2 * math.pi + t * 0.5; R = (560 + 60 * (i % 2)) * (1 + 0.9 * ein(seg(t, 11.0, 12.2), 2))
+                fr.put(sp, DX + math.cos(a) * R * 0.86, 5150 + math.sin(a) * R * 1.25, sc * k, rot=math.sin(t * 2 + i) * .3 + i, depth=(-0.25, 0.25)[i % 2], shadow=0.5)
         k = back(seg(t, 9.25, 9.6), 2.2)
         press = 26 * math.exp(-max(0, t - 9.62) * 14) * (t >= 9.55)
         fr.put(CROWN, DX, 5150 - 470 * k + press, 1.0 * k, anchor=(0.5, 1), shadow=0.5)
@@ -142,6 +233,7 @@ def world_frame(t, cam):
         ticks = np.floor(seg(t, 9.62, 11.6) * 26) / 26
         fr.put(HAND, DX, 5150, 1.0 * k, rot=ticks * 2 * math.pi * 0.86 + 0.03 * math.exp(-((t - 9.62) % (1.98 / 26)) * 60), anchor=(0.5, 0.86), depth=-0.03, shadow=0.6, sh_off=(8, 14))
         cv2.circle(fr.c, tuple(int(v) for v in fr.w2s(DX, 5150)), max(2, int(26 * cam.z * k)), tuple(float(v) for v in INK), -1, cv2.LINE_AA)
+    if t < 11.6: floaters(fr, t)
     return fr.c
 
 
@@ -209,6 +301,15 @@ def soundtrack(path):
     add(drone, 0, 0.055)
     for hb in np.arange(0.35, DUR, 60 / 46):                                 # heartbeat pulse
         add(thump(58, 36, 0.4, 0.09), hb, 0.16); add(thump(52, 34, 0.4, 0.08), hb + 0.19, 0.10)
+    add(whoosh(0.35, 200, 2500, 0.7), 0.2, 0.34); add(thump(120, 60, 0.25, 0.05), 0.5, 0.35); add(whoosh(0.3, 300, 3000, 0.7), 0.42, 0.22, 0.5)
+    for i in range(3): add(burst(0.08, 1500, 7000, 0.015), 0.68 + i * 0.1, 0.22)
+    add(thump(100, 45, 0.5, 0.1), 1.98, 0.6); add(burst(0.15, 500, 4000, 0.03), 1.98, 0.3)
+    for i in range(5): add(whoosh(0.25, 900, 6000, 0.5), T_RIP + 0.2 + i * 0.22, 0.07, (-1) ** i * 0.6)
+    add(thump(160, 90, 0.15, 0.03), 4.86, 0.22); add(burst(0.08, 1500, 7000, 0.015), 4.97, 0.2); add(burst(0.08, 1500, 7000, 0.015), 5.09, 0.2)
+    for i in range(4): add(burst(0.1, 1200, 6000, 0.02), T_STAMP + 0.06 + i * 0.05, 0.14)
+    add(thump(170, 100, 0.12, 0.03), 7.22, 0.22)
+    for i in range(7): add(tick(), 8.44 + i * 0.07, 0.15); add(thump(180 + 12 * i, 110, 0.1, 0.02), 8.44 + i * 0.07, 0.12)
+    for i in range(8): add(burst(0.07, 1500, 7000, 0.012), 9.52 + i * 0.09, 0.12)
     add(riser(1.2), T_SLAM - 1.2, 0.30)
     add(thump(85, 30, 1.0, 0.24), T_SLAM, 0.95); add(burst(0.5, 150, 3500, 0.10), T_SLAM, 0.5); add(burst(0.9, 2000, 9000, 0.25), T_SLAM + 0.02, 0.10)
     add(whoosh(0.5, 200, 2200, 0.5), 1.55, 0.36); add(whoosh(0.5, 300, 3200, 0.55), 2.0, 0.40, -0.5)

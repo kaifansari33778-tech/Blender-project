@@ -1,5 +1,5 @@
 """voxkit.art - procedurally drawn paper props and anonymous archival-style cutout figures."""
-import math
+import math, os
 import numpy as np
 import cv2
 from PIL import Image, ImageDraw
@@ -259,3 +259,165 @@ def wall(w=700, h=2048, seed=0, dark=0.55, side='r'):
     xx = np.arange(w, dtype=np.float32)[None, :]
     a = np.clip(((w - 20 - edge[:, None]) - xx) / 1.5, 0, 1) if side == 'r' else np.clip((xx - 20 - edge[:, None]) / 1.5, 0, 1)
     return rgba(rgb, a.astype(np.float32))
+
+
+# ------------------------------------------------------------------ extra props (flag, logo, money, board clutter)
+RED = np.array([0.80, 0.11, 0.08], np.float32)
+YEL = np.array([0.98, 0.80, 0.12], np.float32)
+NVG = np.array([0.46, 0.725, 0.0], np.float32)
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')
+
+
+def _star(cx, cy, r, rot):
+    return np.int32([(cx + math.sin(rot + i * math.pi / 5) * (r if i % 2 == 0 else r * 0.382), cy - math.cos(rot + i * math.pi / 5) * (r if i % 2 == 0 else r * 0.382)) for i in range(10)])
+
+
+def flag(w=1500, h=1000, seed=0):
+    """Flag of China as a printed, creased paper sheet (official star layout)."""
+    u = w / 30.0
+    lum = 0.80 + 0.35 * fbm(h, w, 3, 4, seed + 1) + 0.10 * np.sin(np.linspace(0, 16, w, dtype=np.float32))[None, :] * fbm(h, w, 2, 2, seed + 2)
+    rgb = paper(h, w, RED, seed, 0.05, 0.10) * lum[..., None]
+    st = np.zeros((h, w), np.float32)
+    cv2.fillPoly(st, [_star(5 * u, 5 * u, 3 * u, 0)], 1.0, cv2.LINE_AA)
+    for sx, sy in ((10, 2), (12, 4), (12, 7), (10, 9)):
+        cv2.fillPoly(st, [_star(sx * u, sy * u, u, math.atan2(5 - sx, -(5 - sy)))], 1.0, cv2.LINE_AA)
+    ycol = paper(h, w, YEL, seed + 3, 0.04, 0.08)
+    ht = 0.88 + 0.12 * (1 - halftone(np.full((h, w), 0.6, np.float32), 7.0))
+    rgb = (rgb * (1 - st[..., None]) + ycol * st[..., None]) * ht[..., None]
+    return rgba(np.clip(rgb, 0, 1), torn(h, w, 10, 4, seed + 4))
+
+
+def nv_mask(s=512):
+    m = cv2.imread(os.path.join(ASSETS, 'nvidia_mark.png'), cv2.IMREAD_UNCHANGED)[..., 3].astype(np.float32) / 255
+    return cv2.resize(m, (s, s), interpolation=cv2.INTER_AREA)
+
+
+def nv_card(w=760, h=600):
+    """White paper card with the NVIDIA mark printed in green and the wordmark below."""
+    rgb = paper(h, w, np.array([.95, .93, .87], np.float32), 51, 0.03, 0.08)
+    s = int(h * 0.62); m = nv_mask(s) * (0.86 + 0.14 * fbm(s, s, 30, 3, 5))
+    x0, y0 = (w - s) // 2, int(h * 0.04)
+    g = paper(s, s, NVG, 52, 0.05, 0.12)
+    rgb[y0:y0 + s, x0:x0 + s] = rgb[y0:y0 + s, x0:x0 + s] * (1 - m[..., None]) + g * m[..., None]
+    t = text_sprite('NVIDIA', int(h * 0.20), INK, pad=6, squeeze=1.0, distress=0.12, seed=3, tracking=6)
+    th, tw = t.shape[:2]; tx, ty = (w - tw) // 2, int(h * 0.70)
+    a = t[..., 3:4]; rgb[ty:ty + th, tx:tx + tw] = rgb[ty:ty + th, tx:tx + tw] * (1 - a) + t[..., :3] * a
+    return rgba(rgb, torn(h, w, 7, 3, 53))
+
+
+def nv_sticker(s=300):
+    """The mark alone, die-cut from green paper with a white border."""
+    pad = 24; S = s + pad * 2; m = np.zeros((S, S), np.float32); m[pad:pad + s, pad:pad + s] = nv_mask(s)
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25))
+    outer = np.clip(cv2.GaussianBlur(cv2.dilate(m, k), (0, 0), 2) * 3 - 1, 0, 1)
+    white = paper(S, S, np.array([.95, .93, .87], np.float32), 61, 0.03, 0.06); g = paper(S, S, NVG, 62, 0.05, 0.12)
+    return rgba(white * (1 - m[..., None]) + g * m[..., None], outer)
+
+
+def bill(w=420, h=190, seed=0):
+    """Generic paper banknote - no numerals."""
+    col = np.array([.62, .68, .50], np.float32)
+    rgb = paper(h, w, col, seed, 0.05, 0.12); ink = np.zeros((h, w), np.float32)
+    cv2.rectangle(ink, (12, 12), (w - 12, h - 12), 0.8, 4); cv2.rectangle(ink, (24, 24), (w - 24, h - 24), 0.5, 2)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    ov = (((xx - w / 2) / (h * .36)) ** 2 + ((yy - h / 2) / (h * .36)) ** 2) < 1
+    ink = np.maximum(ink, ov * halftone(0.25 + 0.5 * fbm(h, w, 5, 3, seed + 1), 4.0))
+    cv2.ellipse(ink, (w // 2, h // 2), (int(h * .36), int(h * .36)), 0, 0, 360, 0.9, 3, cv2.LINE_AA)
+    for cx in (int(w * .14), int(w * .86)):
+        cv2.circle(ink, (cx, h // 2), int(h * .17), 0.8, 3, cv2.LINE_AA); cv2.circle(ink, (cx, h // 2), int(h * .07), 0.8, -1, cv2.LINE_AA)
+    for y in range(40, h - 30, 9):
+        cv2.line(ink, (int(w * .24), y), (int(w * .36), y), 0.45, 2); cv2.line(ink, (int(w * .64), y), (int(w * .76), y), 0.45, 2)
+    d = col * 0.33
+    return rgba(rgb * (1 - ink[..., None]) + d * ink[..., None], torn(h, w, 3, 1, seed + 2))
+
+
+def rays(s=1800, n=14, col=PAPER_LT, a0=0.5):
+    """Sunburst of paper wedges."""
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2
+    th = np.arctan2(yy - c, xx - c); rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / c
+    wedge = np.clip(np.sin(th * n) * 14, 0, 1)
+    a = wedge * np.clip((1 - rr) * 2.2, 0, 1) * np.clip(rr * 6 - 0.4, 0, 1) * a0
+    return rgba(paper(s // 4, s // 4, col, 71, 0.04, 0.1).repeat(4, 0).repeat(4, 1)[:s, :s], a.astype(np.float32))
+
+
+def doc(w=420, h=560, seed=0):
+    """Typed dossier sheet with redaction bars."""
+    r = np.random.default_rng(seed); ink = np.zeros((h, w), np.float32)
+    y = 50
+    while y < h - 40:
+        x = 40; end = w - 40 if r.random() > .2 else int(w * r.uniform(.4, .8))
+        if r.random() < 0.22:
+            cv2.rectangle(ink, (x, y - 3), (int(x + (end - x) * r.uniform(.4, 1)), y + 11), 1.0, -1)
+        else:
+            while x < end:
+                ww = int(r.integers(8, 44)); cv2.rectangle(ink, (x, y), (min(x + ww, end), y + 5), 0.6, -1); x += ww + 7
+        y += 22
+    rgb = ink_on_paper(ink, col=np.array([.93, .90, .82], np.float32), seed=seed)
+    return rgba(rgb, torn(h, w, 3, 1, seed + 1))
+
+
+def tape(w=220, h=64, seed=0):
+    rgb = paper(h, w, np.array([.93, .88, .70], np.float32), seed, 0.03, 0.1)
+    a = torn(h, w, 5, 0, seed, sides='lr') * 0.78
+    return rgba(rgb, a)
+
+
+def pin(s=64, col=RED):
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2
+    rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2); a = np.clip((c * .8 - rr) / 1.5, 0, 1)
+    hl = np.exp(-(((xx - c * .75) ** 2 + (yy - c * .7) ** 2) / (c * .25) ** 2))
+    rgb = col[None, None, :] * (0.75 + 0.25 * (1 - rr / c))[..., None] + hl[..., None] * 0.5
+    return rgba(np.clip(rgb, 0, 1), a)
+
+
+def building(w=260, h=900, seed=0, dark=0.42):
+    rgb = paper(h, w, PAPER * dark, seed, 0.05, 0.2); r = np.random.default_rng(seed)
+    for y in range(40, h - 20, 46):
+        for x in range(26, w - 40, 44):
+            c = PAPER * (0.95 if r.random() < 0.25 else dark * 0.55)
+            cv2.rectangle(rgb, (x, y), (x + 24, y + 28), tuple(float(v) for v in c), -1)
+    return rgba(rgb, torn(h, w, 4, 1, seed + 1, sides='tlr'))
+
+
+def stamp(txt, size=120, col=RED, seed=0):
+    """Rubber-stamp: outlined box with distressed type, ink only (transparent ground)."""
+    t = text_sprite(txt, size, col, pad=10, squeeze=0.85, distress=0.55, seed=seed, tracking=6)
+    th, tw = t.shape[:2]; p = 34; h, w = th + p * 2, tw + p * 2
+    a = np.zeros((h, w), np.float32); cv2.rectangle(a, (8, 8), (w - 8, h - 8), 1.0, 10)
+    a *= np.clip(1.3 - 1.2 * np.clip((fbm(h, w, 50, 3, seed + 3) - 0.45) * 3, 0, 1), 0, 1)
+    a[p:p + th, p:p + tw] = np.maximum(a[p:p + th, p:p + tw], t[..., 3])
+    return rgba(np.broadcast_to(col, (h, w, 3)), a * 0.9)
+
+
+# ------------------------------------------------------------------ real photo -> archival cutout
+def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, fg_hint=None):
+    """Cut a person out of a photo and print them as a monochrome halftone cutout with a white paper border.
+    rect = (x, y, w, h) box around the person in photo pixels; fg_hint = optional list of (x, y, r) sure-foreground discs."""
+    img = cv2.imread(path)
+    x, y, w, h = rect; pad = int(max(w, h) * 0.12)
+    x0, y0 = max(0, x - pad), max(0, y - pad); x1, y1 = min(img.shape[1], x + w + pad), min(img.shape[0], y + h + pad)
+    crop = img[y0:y1, x0:x1]; k = 700.0 / max(crop.shape[:2])
+    small = cv2.resize(crop, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+    mask = np.full(small.shape[:2], cv2.GC_PR_BGD, np.uint8)
+    r = (int((x - x0) * k), int((y - y0) * k), int(w * k), int(h * k))
+    mask[r[1]:r[1] + r[3], r[0]:r[0] + r[2]] = cv2.GC_PR_FGD
+    mask[:3], mask[:, :3], mask[:, -3:] = cv2.GC_BGD, cv2.GC_BGD, cv2.GC_BGD
+    cv2.ellipse(mask, (r[0] + r[2] // 2, r[1] + int(r[3] * .45)), (int(r[2] * .22), int(r[3] * .30)), 0, 0, 360, cv2.GC_FGD, -1)
+    for fx, fy, fr in (fg_hint or []):
+        cv2.circle(mask, (int((fx - x0) * k), int((fy - y0) * k)), int(fr * k), cv2.GC_FGD, -1)
+    bgd, fgd = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
+    cv2.grabCut(small, mask, None, bgd, fgd, 6, cv2.GC_INIT_WITH_MASK)
+    m = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(m)                      # keep the biggest blob only
+    if n > 1: m = (lab == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])).astype(np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+    ys, xs = np.where(m > 0); bx0, bx1, by0, by1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    s = out_h / ((by1 - by0) / k)
+    big = cv2.resize(crop, None, fx=s, fy=s, interpolation=cv2.INTER_CUBIC if s > 1 else cv2.INTER_AREA)
+    mb = cv2.GaussianBlur(cv2.resize(m.astype(np.float32), (big.shape[1], big.shape[0]), interpolation=cv2.INTER_LINEAR), (0, 0), 2.0)
+    mb = np.clip((mb - 0.5) * 6 + 0.5, 0, 1)
+    q = s / k; X0, X1, Y0, Y1 = int(bx0 * q), int(bx1 * q), int(by0 * q), int(by1 * q); P = border + 10
+    g = cv2.cvtColor(big, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255
+    g = cv2.copyMakeBorder(g[Y0:Y1, X0:X1], P, P, P, P, cv2.BORDER_REPLICATE); mk = cv2.copyMakeBorder(mb[Y0:Y1, X0:X1], P, P, P, P, cv2.BORDER_CONSTANT, value=0)
+    lo, hi = np.percentile(g[mk > 0.5], (2, 98)); g = np.clip((g - lo) / max(hi - lo, 1e-3), 0, 1) ** 0.9 * 0.9 + 0.06   # archival print contrast
+    return cutout(g, mk, cell, border, seed=seed, gain=gain)

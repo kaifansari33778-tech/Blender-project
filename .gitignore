@@ -4,3 +4,5 @@ __pycache__/
 frames/
 out/work/
 out/preview_*
+*.sfx.wav
+__pycache__/
