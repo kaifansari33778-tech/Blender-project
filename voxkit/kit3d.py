@@ -379,3 +379,83 @@ def booth(w=420, h=640, txt='TICKETS'):
 def mappin(w=300, h=460, col=(.86, .16, .12)):
     s = cut([('e', .5, .33, .42, .29), ('p', [(.16, .46), (.84, .46), (.5, 1)])], w, h, col, 133)
     paint(s, [('e', .5, .32, .16, .11)], (.97, .95, .9)); return s
+
+
+# ------------------------------------------------------------------ more world-building pieces
+def region(pts, w, h, col, seed=0): return cut([('p', pts)], w, h, col, seed, 5)
+def idaho(): return region([(.0, 0), (.28, 0), (.30, .22), (.42, .30), (.38, .42), (.52, .52), (.60, .50), (.66, .62), (1, .62), (1, 1), (0, 1)], 700, 1000, (.52, .62, .40), 150)
+def usmap(): return region([(.02, .18), (.12, .10), (.30, .12), (.50, .12), (.62, .16), (.70, .22), (.78, .20), (.90, .10), (.97, .14), (.93, .30), (.88, .42), (.84, .56), (.80, .66), (.82, .86), (.78, .90), (.74, .72), (.62, .74), (.52, .80), (.46, .94),
+                             (.40, .82), (.30, .72), (.18, .70), (.08, .60), (.03, .40)], 1600, 1000, (.78, .70, .52), 151)
+def ncmap(): return region([(0, .5), (.2, .42), (.5, .22), (1, .18), (.98, .4), (.86, .62), (.7, .78), (.52, .72), (.4, .62), (.22, .62), (.08, .72)], 1600, 700, (.42, .52, .36), 152)
+
+
+def factory(w=1300, h=900):
+    s = cut([('p', [(0, .5), (1, .5), (1, 1), (0, 1)])] + [('p', [(i * .2, .5), (i * .2 + .2, .36), (i * .2 + .2, .5)]) for i in range(5)] + [('p', [(.12 + i * .28, .0), (.2 + i * .28, .0), (.22 + i * .28, .5), (.1 + i * .28, .5)]) for i in range(3)], w, h, (.34, .30, .30), 153)
+    for i in range(6): paint(s, [('p', [(.06 + i * .155, .62), (.15 + i * .155, .62), (.15 + i * .155, .78), (.06 + i * .155, .78)])], (.95, .75, .35) if i % 2 else (.2, .2, .22))
+    return s
+
+
+def skull(w=700, h=820):
+    s = cut([('e', .5, .4, .44, .38), ('p', [(.26, .6), (.74, .6), (.68, .98), (.32, .98)])], w, h, (.93, .91, .84), 154)
+    paint(s, [('e', .32, .42, .12, .12), ('e', .68, .42, .12, .12), ('p', [(.5, .54), (.56, .68), (.44, .68)])], (.08, .07, .07))
+    for i in range(5): paint(s, [('l', .36 + i * .07, .78, .36 + i * .07, .96, 6)], (.08, .07, .07))
+    return s
+
+
+def coin(s=200, txt='1¢'):
+    c = cut([('e', .5, .5, .48, .48)], s, s, (.72, .46, .22), 155, 3); paint(c, [('e', .5, .5, .38, .38)], (.80, .54, .28))
+    t = text_sprite(txt, 80, np.float32([.4, .22, .1]), pad=2, squeeze=.9, distress=.1, seed=1); art.paste(c, t, int(s / 2 - t.shape[1] / 2), int(s / 2 - t.shape[0] / 2)); return c
+
+
+def magnifier(w=520, h=700):
+    s = np.zeros((h, w, 4), np.float32); c = (.14, .12, .11, 1.0)
+    cv2.circle(s, (int(w * .5), int(h * .36)), int(w * .42), c, 34, cv2.LINE_AA); cv2.circle(s, (int(w * .5), int(h * .36)), int(w * .40), (.82, .92, .95, .28), -1, cv2.LINE_AA)
+    cv2.line(s, (int(w * .68), int(h * .6)), (int(w * .9), int(h * .96)), c, 46, cv2.LINE_AA); return s
+
+
+def spiro(w=420, h=160, col=(.62, .12, .16)):
+    s = np.zeros((h, w, 4), np.float32); pts = np.int32([(x, h / 2 + h * .32 * math.sin(x / w * 6 * math.pi)) for x in np.linspace(14, w - 14, 120)])
+    cv2.polylines(s, [pts], False, tuple(col) + (1.0,), 20, cv2.LINE_AA); return s
+
+
+def germ(seed=0, s=260, col=(.42, .68, .30)):
+    r = np.random.default_rng(seed); g = cut([('e', .5, .5, .3, .3)], s, s, col, 156 + seed, 3)
+    for i in range(10):
+        a = i / 10 * 6.283 + r.uniform(-.2, .2); paint(g, [('l', .5 + .28 * math.cos(a), .5 + .28 * math.sin(a), .5 + .45 * math.cos(a), .5 + .45 * math.sin(a), 9)], col); paint(g, [('e', .5 + .45 * math.cos(a), .5 + .45 * math.sin(a), .035, .035)], col)
+    paint(g, [('e', .42, .44, .06, .06), ('e', .6, .56, .04, .04)], np.float32(col) * .6)
+    m = np.zeros((s, s), np.float32); cv2.circle(m, (s // 2, s // 2), int(s * .3), 1.0, -1, cv2.LINE_AA)
+    for i in range(10):
+        a = i / 10 * 6.283; cv2.line(m, (int(s * (.5 + .28 * math.cos(a))), int(s * (.5 + .28 * math.sin(a)))), (int(s * (.5 + .45 * math.cos(a))), int(s * (.5 + .45 * math.sin(a)))), 1.0, 13, cv2.LINE_AA); cv2.circle(m, (int(s * (.5 + .45 * math.cos(a))), int(s * (.5 + .45 * math.sin(a)))), int(s * .045), 1.0, -1, cv2.LINE_AA)
+    g[..., 3] = m; return g
+
+
+def biohazard(s=900):
+    b = cut([('e', .5, .5, .48, .48)], s, s, (.95, .78, .12), 157, 4); k = (.08, .07, .06, 1.0)
+    for i in range(3):
+        a = -math.pi / 2 + i * 2.094; cx, cy = .5 + .19 * math.cos(a), .5 + .19 * math.sin(a)
+        cv2.circle(b, (int(cx * s), int(cy * s)), int(.19 * s), k, int(.06 * s), cv2.LINE_AA)
+    cv2.circle(b, (s // 2, s // 2), int(.07 * s), k, -1, cv2.LINE_AA); cv2.circle(b, (s // 2, s // 2), int(.14 * s), (.95, .78, .12, 1), int(.03 * s), cv2.LINE_AA); return b
+
+
+def dossier(txt='MKULTRA', w=640, h=820):
+    s = cut([('p', [(0, .08), (.1, 0), (.44, 0), (.5, .08), (1, .08), (1, 1), (0, 1)])], w, h, (.80, .66, .38), 158)
+    paint(s, [('p', [(.1, .3), (.9, .3), (.9, .5), (.1, .5)])], (.95, .93, .86))
+    t = text_sprite(txt, 110, INK, pad=4, squeeze=.9, distress=.15, seed=4, tracking=6); k = w * .7 / t.shape[1]; t = cv2.resize(t, None, fx=k, fy=k, interpolation=cv2.INTER_AREA); art.paste(s, t, int((w - t.shape[1]) / 2), int(h * .4 - t.shape[0] / 2))
+    for i in range(4): paint(s, [('l', .14, .62 + i * .08, .86 if i % 2 else .6, .62 + i * .08, 5)], (.5, .4, .22))
+    return s
+
+
+def mushroom(w=1200, h=1300):
+    s = cut([('p', [(.42, .4), (.58, .4), (.66, 1), (.34, 1)]), ('e', .5, .26, .46, .2), ('e', .5, .16, .32, .15), ('e', .5, .5, .2, .06), ('e', .5, .97, .4, .05)], w, h, (.93, .62, .36), 159, 5)
+    paint(s, [('e', .5, .22, .3, .1)], (.98, .82, .5)); return s
+
+
+def letter(w=560, h=720, head='WE APOLOGIZE'):
+    s = cut([('p', [(0, 0), (1, 0), (1, 1), (0, 1)])], w, h, (.95, .93, .86), 160, 3)
+    t = text_sprite(head, 80, INK, pad=3, squeeze=.86, distress=.1, seed=3); k = w * .8 / t.shape[1]; t = cv2.resize(t, None, fx=k, fy=k, interpolation=cv2.INTER_AREA); art.paste(s, t, int((w - t.shape[1]) / 2), int(h * .08))
+    for i in range(10): paint(s, [('l', .1, .28 + i * .06, .9 if i % 3 else .55, .28 + i * .06, 4)], (.35, .33, .3))
+    return s
+
+
+def xmark(s=300, col=(.80, .14, .12)):
+    x = np.zeros((s, s, 4), np.float32); c = tuple(col) + (1.0,); cv2.line(x, (30, 30), (s - 30, s - 30), c, 46, cv2.LINE_AA); cv2.line(x, (s - 30, 30), (30, s - 30), c, 46, cv2.LINE_AA); return x

@@ -35,7 +35,7 @@ def Lb(txt, x, y, z, w, t, col=ORANGE, a='slam', out=None, shake=True, size=150,
     if key not in _LC: _LC[key] = _fit_label(art.label(txt, size, col=np.asarray(col, np.float32), seed=len(txt)))
     it = I(_LC[key], x, z, w, y=y, t=t, a=a, sh=0, fog=False, blur=0, out=out, face=True, shake=shake and a == 'slam')
     if not anchor:
-        sy = .125 if y >= 5.5 else .215 if y >= 4.4 else .31 if y >= 2.6 else .5 if y >= 1.0 else .81
+        sy = .148 if y >= 5.5 else .236 if y >= 4.4 else .325 if y >= 2.6 else .5 if y >= 1.0 else .81
         it.scr = (0.5 + x * 0.085, sy, min(.92, w / 5.6))
     return it
 

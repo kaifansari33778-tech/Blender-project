@@ -30,7 +30,7 @@ _cols = [(.62, .60, .58), (.70, .70, .74), (.78, .70, .58), (.55, .66, .76), (.6
 TOW = {'empire': K.tower('empire'), 'chrysler': K.tower('chrysler', col=_cols[1]), 'flatiron': K.tower('flatiron', col=_cols[2]), 'wtc': K.tower('wtc', col=_cols[3])}
 BLK = [K.tower('block', w=300 + 40 * (i % 3), h=700 + 130 * (i % 5), col=_cols[i % 8], seed=i) for i in range(10)]
 _r = np.random.default_rng(12)
-CITY = [('empire', 0.0, 26, 5.2), ('chrysler', 7.5, 27, 4.6), ('wtc', -8.5, 30, 5.0), ('flatiron', 4.2, 20.5, 3.4)] + \
+CITY = [('empire', 0.0, 17.2, 4.8), ('chrysler', 5.6, 17.0, 4.2), ('wtc', -5.8, 17.4, 5.0), ('flatiron', 2.9, 15.6, 3.2)] + \
        [(int(_r.integers(10)), float(x + _r.uniform(-1, 1)), float(z), float(_r.uniform(3.2, 5.0))) for z in (17, 20, 23.5, 27.5, 32, 37) for x in np.arange(-22, 22.1, 4.4)]
 DIAL = art.dial(900); _DC = {}
 TEASE = [(cv2.resize(Z.BARS, (500, 350)), 1.6), (K.stamp(), 1.0), (K.bottle(skull=True), .7), (art.gavel(), 1.6), (K.syringe(), 2.2), (K.bomb(), .8), (K.cia_seal(400), 1.5), (K.grave(), 1.0)]

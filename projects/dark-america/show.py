@@ -78,7 +78,7 @@ S_MAIL = dict(t=20.9, world=world((.56, .50, .34), (.42, .60, .78), (.96, .86, .
     [I(PO, -1.5, 13.5, 10, t=21.0), I(K.mailbox(), -2.7, 6.9, .62, t=T('idaho')), I(LAMP, 3.6, 7.4, .6, t=T('idaho') + .1),
      I(MAN10, -1.15, 7.2, pw(MAN10, 1.8), t=T('parents'), bob=.02), I(WOMAN10, 1.15, 7.2, pw(WOMAN10, 1.68), t=T('parents') + .1, bob=.02), I(POSTMAN, 2.5, 6.6, pw(POSTMAN, 1.8), t=T('mailed'), bob=.02),
      I(GIRL, 0, 6.8, pw(GIRL, 1.12), t=tg, bob=.015), I(STAMPS[0], -0.1, 6.76, .2, y=.52, t=T('fifty'), a='grow', sh=0), I(STAMPS[1], 0.11, 6.76, .2, y=.48, t=T('three'), a='grow', sh=0), I(STAMPS[2], 0.0, 6.75, .2, y=.3, t=T('cents'), a='grow', sh=0),
-     Lb('1914 · IDAHO', 0, 5.7, 7.3, 4.4, T('nineteen', 2), out=26.6), Lb('PARENTS MAILED THEIR DAUGHTER', 0, 4.75, 7.3, 5.4, T('mailed'), WHITE, out=26.6), Lb('AGE 5', 1.05, 1.25, 6.7, 1.25, T('five'), WHITE, a='pop', out=28.5, anchor=True),
+     Lb('IDAHO', 0, 5.7, 7.3, 2.8, T('idaho'), out=26.6), Lb('PARENTS MAILED THEIR DAUGHTER', 0, 4.75, 7.3, 5.4, T('mailed'), WHITE, out=26.6), Lb('AGE 5', 1.05, 1.25, 6.7, 1.25, T('five'), WHITE, a='pop', out=28.5, anchor=True),
      Lb('53¢ IN STAMPS', 0, 0.02, 6.2, 3.6, T('fifty')), Lb('PINNED TO HER COAT', 0, 5.8, 7.3, 4.4, T('pinned'), WHITE)],
     cam=[(20.9, 1.6, 2.5, -8.5, -.1, 0), (24.6, 0, 1.8, 0.4, 0, .1), (26.6, 0, 1.3, 3.0, 0, .08), (30.2, .2, 1.35, 3.4, 0, .08)])
 
@@ -114,8 +114,8 @@ S_COURT = dict(t=46.0, world=world((.80, .78, .72), (.38, .55, .74), (.97, .90, 
     [I(art.gavel(), 2.9, 7.6, 1.7, t=T('ruled'), a='drop', out=51.9), I(CB, 0, 7.9, 2.0, t=T('people', 3), out=51.9), Lb('CARRIE BUCK', 0, 2.75, 7.85, 1.9, T('people', 3) + .3, WHITE, a='pop', out=51.9, anchor=True)] +
     [I(ANON[i % 4], x, z, pw(ANON[0], 1.75), t=T('sixty', 2) + i * .012, bob=.01, quiet=i % 8 > 0, out=55.1) for i, (x, z) in enumerate(_f60)] +
     [I(RULING, 0, 7.6, 2.5, t=T('ruling'), a='drop'),
-     Lb('1927', 0, 5.8, 7.3, 2.2, T('nineteen', 3), out=51.9), Lb('THE SUPREME COURT', 0, 4.8, 7.3, 4.2, T('supreme'), WHITE, out=51.9), Lb('STATES MAY STERILIZE PEOPLE', 0, 0.1, 6.6, 5.2, T('sterilize'), out=51.9),
-     Lb('AGAINST THEIR WILL', 0, 3.0, 7.3, 4.0, T('against'), WHITE, out=51.9), Lb('60,000+ AMERICANS', 0, 5.6, 7.3, 5.0, T('sixty', 2), out=55.1), Lb('STERILIZED', 0, 0.1, 6.6, 3.8, T('sterilized'), WHITE, out=55.1),
+     Lb('THE SUPREME COURT', 0, 5.8, 7.3, 4.6, T('supreme'), WHITE, out=51.9), Lb('STATES MAY STERILIZE PEOPLE', 0, 0.1, 6.6, 5.2, T('sterilize'), out=51.9),
+     Lb('AGAINST THEIR WILL', 0, 4.8, 7.3, 4.0, T('against'), WHITE, out=51.9), Lb('60,000+ AMERICANS', 0, 5.6, 7.3, 5.0, T('sixty', 2), out=55.1), Lb('STERILIZED', 0, 0.1, 6.6, 3.8, T('sterilized'), WHITE, out=55.1),
      Lb('NEVER OVERTURNED', 0, 0.1, 6.6, 4.8, T('never')), Lb('STILL ON THE BOOKS', 0, 5.8, 7.3, 4.2, T('officially'), WHITE, a='pop')],
     cam=[(46.0, 2, 3.0, -10, -.1, -.03), (49.2, 0, 1.8, 2.2, 0, .1), (51.9, 0, 1.7, 3.8, 0, .09), (53.6, 0, 3.0, 2.0, 0, -.02), (55.2, 0, 2.8, 2.4, 0, -.01), (58.5, 0, 1.9, 3.6, 0, .07)])
 
@@ -163,7 +163,7 @@ S_SF = dict(t=79.8, world=world(None, (.48, .58, .68), (.94, .90, .82), (.86, .8
     [I(HILLS, 0, 70, 170, sh=0, blur=1.2), I(BRIDGE, -6, 46, 66, sh=0, blur=.8)] + clouds(5, .85) + [I(art3d.bird(), -6 + i * 2.0, 26, 1.2, y=12 + math.sin(i * 2.0), sh=0, fog=False, drift=(1.6, 0, 0)) for i in range(6)] +
     [I(DOCK, 0, 3.6, 18, flat=True, t=tw - .1, a='fade', sh=0), I(HOSP, 0, 14.5, 13, t=tw)] + [I(BED, x, z, 1.04, t=te + i * .11) for i, (x, z) in enumerate(_beds) if i != 8] +
     [I(BED, _beds[8][0], _beds[8][1], 1.04, t=te + 8 * .11, out=T('died', 3) - .15), I(BED_E, _beds[8][0], _beds[8][1], 1.04, t=T('died', 3) + .1), I(NURSE, -3.6, 9.6, pw(NURSE, 1.7), t=T('hospital'), bob=.01), I(DOC, 3.6, 9.6, pw(DOC, 1.8), t=T('hospital') + .1, bob=.01),
-     Lb('1950 · SAN FRANCISCO', 0, 5.9, 7.3, 5.2, T('fifty', 2), out=84.6), Lb('THE NAVY SPRAYED BACTERIA', 0, 0.3, 6.6, 5.4, ts, out=87.9), Lb('A SECRET GERM-WARFARE TEST', 0, 5.9, 7.3, 5.4, T('biological'), WHITE, out=87.9),
+     Lb('SAN FRANCISCO', 0, 5.9, 7.3, 4.6, T('san'), out=84.6), Lb('THE NAVY SPRAYED BACTERIA', 0, 0.3, 6.6, 5.4, ts, out=87.9), Lb('A SECRET GERM-WARFARE TEST', 0, 5.9, 7.3, 5.4, T('biological'), WHITE, out=87.9),
      Lb('WEEKS LATER', 0, 5.6, 7.3, 3.2, tw + .3, WHITE, a='pop'), Lb('11 PATIENTS', 0, 4.7, 7.3, 3.6, te, out=92.6), Lb('ONE RARE INFECTION', 0, 0.1, 5.9, 4.4, T('rare'), out=92.6), Lb('ONE OF THEM DIED', 0, 0.1, 5.9, 4.4, T('died', 3))],
     cam=[(79.8, 0, 3.0, -6, 0, -.02), (84.2, 0, 2.5, -.5, 0, .04), (87.7, 0, 3.4, 2.5, 0, .0), (88.6, 0, 3.6, .6, 0, -.10), (94.1, 0, 3.3, 2.6, 0, -.16)])
 
@@ -200,7 +200,7 @@ S_GOLD = dict(t=104.2, world=world((.17, .27, .19), (.02, .04, .11), (.20, .25, 
     [I(STARS, 0, 110, 230, y=14, sh=0, fog=False), I(art.moon(), 18, 90, 10, y=38, sh=0, fog=False, blur=1)] + clouds(4, .35) + [I(FARM, -5.2, 14, 6, t=104.3), I(BARN, 5.6, 15, 7, t=104.4)] +
     [I((TREES + PINES)[i % 7], x, z, w, t=104.3 + i * .05, sway=.05) for i, (x, z, w) in enumerate(((-10, 11, 6), (10.5, 10, 6), (-1, 18, 7), (-8, 5, 5), (8.4, 4.5, 5), (-13, 20, 8), (13, 21, 8)))] +
     [I(PANEL, 0, 7.0, 3.6, y=.75, t=tsw, a='drop', sh=.4, fog=False),
-     Lb('1961 · NORTH CAROLINA', 0, 6.0, 7.3, 5.2, T('sixty', 3), out=110.6), Lb('DROPPED BY ACCIDENT', 0, 5.1, 7.3, 4.2, T('accidentally') + .3, WHITE, a='pop', out=110.6), Lb('2 HYDROGEN BOMBS', 0, 0.1, 6.6, 5.0, T('hydrogen'), out=110.6),
+     Lb('NORTH CAROLINA', 0, 6.0, 7.3, 4.6, T('north'), out=110.6), Lb('DROPPED BY ACCIDENT', 0, 5.1, 7.3, 4.2, T('accidentally') + .3, WHITE, a='pop', out=110.6), Lb('2 HYDROGEN BOMBS', 0, 0.1, 6.6, 5.0, T('hydrogen'), out=110.6),
      Lb('ONE SWITCH', 0, 4.5, 7.3, 3.6, T('switch')), Lb('STOPPED A NUCLEAR EXPLOSION', 0, 0.02, 6.2, 5.2, T('stopped'), WHITE)],
     cam=[(104.2, 0, 2.2, -8, 0, .12), (107.6, 0, 2.0, -2.5, 0, .2), (110.4, 0, 1.9, 1.8, 0, .1), (114.4, 0, 1.8, 2.6, 0, .09)])
 
