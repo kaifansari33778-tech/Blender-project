@@ -707,3 +707,25 @@ def wanted(photo_spr, w=520, h=720, seed=0, title='WANTED'):
         yy = int(h * .9) + i * 14
         if yy < h - 10: cv2.line(rgb, (int(w * .12), yy), (int(w * .88), yy), tuple(float(v) for v in INK * 1.5), 5)
     return rgba(rgb, torn(h, w, 7, 3, seed + 1))
+
+
+def jail_bars(w=900, h=1300, n=7, seed=0):
+    """Paper-cut prison bars: vertical rods with two cross straps, transparent between."""
+    rgb = paper(h, w, np.array([.16, .16, .18], np.float32), seed, 0.06, 0.2); a = np.zeros((h, w), np.float32)
+    bw = int(w / n * 0.28)
+    for i in range(n):
+        cx = int((i + 0.5) * w / n); cv2.rectangle(a, (cx - bw // 2, 0), (cx + bw // 2, h), 1.0, -1)
+        hl = np.linspace(0, 1, bw, dtype=np.float32)
+        rgb[:, cx - bw // 2:cx - bw // 2 + bw] *= (0.7 + 0.8 * np.exp(-((hl - 0.3) / 0.18) ** 2))[None, :, None]
+    for y in (int(h * .12), int(h * .86)):
+        cv2.rectangle(a, (0, y), (w, y + int(h * .045)), 1.0, -1)
+        cv2.rectangle(rgb, (0, y), (w, y + int(h * .045)), (.22, .22, .25), -1); cv2.line(rgb, (0, y + 4), (w, y + 4), (.45, .45, .5), 3)
+    return rgba(np.clip(rgb, 0, 1), a * torn(h, w, 3, 0, seed + 1, sides='tb'))
+
+
+def baggie(w=120, h=150, seed=0):
+    rgb = paper(h, w, np.array([.92, .92, .9], np.float32), seed, .04, .1)
+    m = np.zeros((h, w), np.float32); cv2.rectangle(m, (4, int(h * .15)), (w - 4, h - 4), 1.0, -1)
+    cv2.rectangle(rgb, (4, int(h * .15)), (w - 4, int(h * .24)), (.80, .15, .12), -1)
+    rgb[int(h * .3):] *= np.float32([.97, .97, .97])
+    return rgba(rgb, m * 0.92)

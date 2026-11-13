@@ -34,12 +34,12 @@ class El:
 
 
 _n = [0]
-def E(spr, x, y, s=1.0, r=0.0, d=0.0, t=None, a='pop', dur=None, wob=0.02, sh=0.5, wv=0, spin=0.0, out=None, blur=None, alpha=1.0, quiet=False, glow=None, tint=None, pulse=0.0):
+def E(spr, x, y, s=1.0, r=0.0, d=0.0, t=None, a='pop', dur=None, wob=0.02, sh=0.5, wv=0, spin=0.0, out=None, blur=None, alpha=1.0, quiet=False, glow=None, tint=None, pulse=0.0, breath=0.0):
     _n[0] += 1
     dur = dur or {'pop': .22, 'slam': .12, 'drop': .38, 'rise': .38, 'L': .34, 'R': .34, 'fade': .3, 'none': .1}[a]
     t0 = None if t is None else (t - dur if a == 'slam' else t - 0.12 if a in ('drop', 'rise', 'L', 'R') else t)
     return El(kind='el', spr=spr, x=x, y=y, s=s, r=r, d=d, t=t0, hit=t, a=a if t is not None else 'none', dur=dur, wob=wob, sh=sh, wv=wv, spin=spin, out=out, blur=blur, alpha=alpha,
-              ph=_n[0] * 1.7, quiet=quiet, glow=None if glow is None else np.asarray(glow, np.float32), tint=tint, pulse=pulse)
+              ph=_n[0] * 1.7, quiet=quiet, glow=None if glow is None else np.asarray(glow, np.float32), tint=tint, pulse=pulse, breath=breath)
 def S(pts, t, dur=0.35, col=ORANGE, w=12, d=0.0, dash=False): return El(kind='stroke', pts=pts, t=t, dur=dur, col=np.asarray(col, np.float32), w=w, d=d, dash=dash)
 def Fn(fn): return El(kind='fn', fn=fn)
 def BG(rays, y=-200, spin=0.3): return E(rays, 0, y, 1.5, d=0.9, sh=0, spin=spin, wob=0, blur=2)
@@ -105,7 +105,8 @@ def draw_el(fr, e, t, ox, oy):
     spr = wave(e.spr, t + e.ph, e.wv) if e.wv else e.spr
     if e.glow is not None:
         fr.put(_glow_spr(e.spr, e.glow), ox + x, oy + y, s, r, e.d, al * (0.75 + 0.25 * math.sin(t * 4)), shadow=0, blur=0)
-    fr.put(spr, ox + x, oy + y, s, r, e.d, al, shadow=e.sh, blur=e.blur, tint=e.tint)
+    sy = 1 + e.breath * math.sin(t * 2.3 + e.ph); sx = 1 - 0.4 * e.breath * math.sin(t * 2.3 + e.ph)
+    fr.put(spr, ox + x, oy + y, s, r, e.d, al, shadow=e.sh, blur=e.blur, tint=e.tint, sx=sx, sy=sy)
 
 
 def flashes(times, cols=None):
