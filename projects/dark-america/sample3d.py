@@ -13,15 +13,19 @@ DUR = 5.0; T_ZOO = T('zoo'); T_HUMAN = T('human')
 PH = os.path.join(HERE, 'photos')
 
 # ------------------------------------------------------------------ paper pieces
-OTA = art.photo_cutout(os.path.join(PH, 'wm', 'otabenga_0.jpg'), (150, 90, 740, 1100), out_h=1000, fg_hint=[(450, 400, 170), (520, 1000, 200)], bg_hint=[(40, 950, 110), (60, 700, 60), (80, 80, 60), (820, 80, 60), (850, 500, 40), (745, 470, 55), (760, 620, 45), (730, 340, 40)])
+OTA = art.photo_cutout(os.path.join(PH, 'wm', 'otabenga_0.jpg'), (150, 90, 740, 1100), out_h=1000, gain=0.86, fg_hint=[(450, 400, 170), (520, 1000, 200)], bg_hint=[(40, 950, 110), (60, 700, 60), (80, 80, 60), (820, 80, 60), (850, 500, 40), (745, 470, 55), (760, 620, 45), (730, 340, 40)])
 PEOPLE = [art3d.person(i) for i in range(12)]
 TREES = [art3d.tree(i) for i in range(4)]; CLOUDS = [art3d.cloud(i) for i in range(4)]
 HOUSE = art3d.facade(1600, 900); SIGN = art3d.sign('MONKEY HOUSE', 900); BARS = art3d.bars(1000, 700); BACK = art3d.wall(1000, 700); SIDE = art3d.bars(500, 700, 5, 3)
 ROOF = art3d.wall(1000, 120, (.16, .14, .13), 4)
 FLAG = art.flag_us(900, 480); POLE = art3d.pole()
 Y06 = art.label('1906', 220, seed=4); HUMAN = art.label('A HUMAN BEING', 150, seed=13, col=np.array([.95, .93, .86], np.float32)); ZOO = art.label('IN A ZOO', 170, seed=8)
-RAYS = art.rays(1800, 14, np.array([.98, .90, .70], np.float32), 0.35)
-GROUND = art3d.ground_tex(); SKY = art3d.sky()
+GROUND = art3d.ground_tex(); SKY = art3d.sky(top=(.20, .30, .42), bot=(.96, .74, .50))
+BIGFLAG = art.flag_us(1400, 740, seed=3); CITY = art3d.skyline_old(2400, 700, 2)
+ORANG = art3d.orangutan(); MONK = [art3d.monkey(i) for i in range(3)]; PARROT = art3d.parrot(); LAMP = art3d.lamp(); BENCH = art3d.bench(); GATE = art3d.gate()
+BALLOONS = [art3d.balloon(c) for c in ((.82, .14, .12), (.95, .75, .15), (.15, .35, .65))]; PARASOL = art3d.parasol(); TRIPOD = art3d.camera_tripod(); BIRD = art3d.bird()
+INWALL = art3d.stone_wall(1000, 700); STRAW = art3d.straw(1000, 500); BRANCH = art3d.branch(); SIDEWALL = art3d.stone_wall(500, 700, 3)
+CAGE2 = art3d.bars(700, 560, 8, 5); WALL2 = art3d.stone_wall(700, 560, 6); SIGN_L = art3d.sign('PRIMATES', 500, seed=2); SIGN_R = art3d.sign('BIRDS', 400, seed=3)
 WORLD = World(GROUND, SKY, fog=(.88, .78, .60), fog_d=75, focus=8.0, dof=13)
 rng = np.random.default_rng(4)
 _pos = [(-1.6, -7.5), (1.9, -7.0), (-3.2, -5.8), (2.9, -5.5), (-1.5, -4.2), (1.6, -3.8), (-3.9, -3.0), (3.7, -2.6), (-2.3, -1.6), (2.4, -1.2), (-1.5, -0.2), (1.6, 0.3),
@@ -38,43 +42,75 @@ def popup(t, t0, d=0.5):
 def cam_at(t):
     k = eio(seg(t, 0.0, 4.4), 2)
     sh = math.exp(-max(0, t - T_ZOO) * 9) * (t >= T_ZOO) * 0.05
-    return Cam3(lerp(0.9, 0.0, k) + sh * math.sin(t * 70), lerp(2.2, 1.75, k) + sh * math.cos(t * 83), lerp(-10.0, 1.3, k), yaw=lerp(-0.07, 0.0, k), pitch=lerp(-0.03, 0.115, k), f=1150)
+    return Cam3(lerp(0.9, 0.0, k) + sh * math.sin(t * 70), lerp(2.2, 1.75, k) + sh * math.cos(t * 83), lerp(-10.5, 1.3, k), yaw=lerp(-0.12, 0.0, k) + 0.05 * math.sin(k * math.pi), pitch=lerp(0.02, 0.115, k), f=1150)
 
 
 def cards_at(t):
     C = []
-    C.append(Card(RAYS, 0, 120, 190, y=-20, shadow=0, fog=False, blur=3))
-    for i, (x, y, z, w) in enumerate(((-34, 22, 110, 30), (30, 30, 100, 26), (-8, 38, 120, 34), (48, 16, 115, 24))):
-        C.append(Card(CLOUDS[i], x + t * 0.5, z, w, y=y, shadow=0, blur=1.5))
-    C.append(Card(HOUSE, 0, 11.5, 20, tilt=popup(t, 0.05, .55)))
-    for i, (x, z, w) in enumerate(((-8.5, 9.5, 6.0), (8.3, 9.0, 6.5), (-6.2, 5.0, 4.6), (6.4, 4.4, 5.0), (-11, 14, 8), (11.5, 15, 8))):
-        C.append(Card(TREES[i % 4], x, z, w, tilt=popup(t, 0.12 + i * .05), sway=0.05, ph=i))
+    # ---- sky: giant flag, old city, drifting clouds, birds
+    C.append(Card(BIGFLAG, 0, 60, 120 * (0.6 + 0.4 * eout(seg(t, 0.0, 0.9), 3)), y=4 - 40 * (1 - eout(seg(t, 0.0, 0.8), 3)), wv=22, shadow=0, blur=1.0, ph=2, fog=False, alpha=0.93))
+    C.append(Card(CITY, 0, 48, 150, tilt=popup(t, 0.0, .6), shadow=0, blur=1.5))
+    for i, (x, y, z, w) in enumerate(((-34, 40, 90, 34), (30, 48, 84, 30), (-6, 58, 100, 38), (48, 34, 95, 26), (-55, 52, 88, 30))):
+        C.append(Card(CLOUDS[i % 4], x + t * 1.2, z, w, y=y, shadow=0, blur=1.5, alpha=0.92))
+    for i in range(7):
+        C.append(Card(BIRD, -14 + i * 2.2 + t * 2.6 + 1.5 * math.sin(i), 30, 1.4 + 0.3 * (i % 2), y=17 + 1.2 * math.sin(i * 1.7) + 0.4 * math.sin(t * 6 + i), shadow=0, fog=False, blur=0.8))
+    # ---- zoo buildings and side cages
+    C.append(Card(HOUSE, 0, 11.5, 22, tilt=popup(t, 0.05, .55)))
+    for sgn, mk, sg in ((-1, 0, SIGN_L), (1, 1, SIGN_R)):
+        x = sgn * 7.6; k = popup(t, 0.2 + 0.08 * (sgn > 0), .5)
+        C.append(Card(WALL2, x, 9.4, 4.4, tilt=k)); C.append(Card(STRAW, x, 7.6, 4.2, tilt=math.pi / 2, shadow=0, alpha=seg(t, .5, .7)))
+        if sgn < 0:
+            C.append(Card(MONK[0], x - 1.0, 8.6, 1.0, y=1.5 + 0.12 * math.sin(t * 5), tilt=k, shadow=0)); C.append(Card(MONK[1], x + 0.9, 8.8, 1.0, y=0.05 * abs(math.sin(t * 6)), tilt=k)); C.append(Card(BRANCH, x, 8.9, 3.6, y=1.2, tilt=k, shadow=0))
+        else:
+            C.append(Card(BRANCH, x, 8.9, 3.6, y=1.0, tilt=k, shadow=0)); C.append(Card(PARROT, x - 0.6, 8.7, 0.5, y=1.75, tilt=k, shadow=0)); C.append(Card(MONK[2], x + 1.0, 8.6, 0.95, y=0.04 * abs(math.sin(t * 5 + 1)), tilt=k))
+        C.append(Card(CAGE2, x, 7.5, 4.4, tilt=k)); C.append(Card(sg, x, 7.45, 2.2, y=3.6, shadow=0, alpha=seg(t, .7, .9)))
+    for i, (x, z, w) in enumerate(((-11.5, 10.5, 6.0), (11.3, 10.0, 6.5), (-10.5, 4.0, 5.0), (10.6, 3.4, 5.2), (-13, 16, 9), (13.5, 17, 9), (-9.5, -2.0, 5.5), (9.8, -2.6, 5.5))):
+        C.append(Card(TREES[i % 4], x, z, w, tilt=popup(t, 0.12 + i * .04), sway=0.06, ph=i))
+    for i, (x, z) in enumerate(((-4.6, 5.6), (4.6, 5.6), (-4.8, -0.5), (4.8, -0.5), (-5.0, -6.0), (5.0, -6.0))):
+        C.append(Card(LAMP, x, z, 0.62, tilt=popup(t, 0.1 + i * .05, .4)))
+    C.append(Card(BENCH, -5.6, 2.4, 2.2, yaw=0.5, tilt=popup(t, .3, .4))); C.append(Card(BENCH, 5.7, 1.6, 2.2, yaw=-0.5, tilt=popup(t, .35, .4)))
+    C.append(Card(GATE, 0, -5.2, 10.5, tilt=popup(t, 0.0, .45)))
     C.append(Card(POLE, -5.0, 7.2, 0.28, tilt=popup(t, 0.3)))
     if t > 0.75: C.append(Card(FLAG, -3.55, 7.2, 2.9, y=4.9, wv=14, shadow=0, alpha=seg(t, .75, .95), ph=1))
-    # the cage
+    # ---- the monkey house cage: lit plaster wall, straw, a branch, the orangutan - and him
     kc = popup(t, 0.25, .5)
-    C.append(Card(BACK, 0, 10.0, 5.6, tilt=kc)); C.append(Card(SIDE, -2.8, 8.75, 2.5, yaw=math.pi / 2, tilt=0, alpha=seg(t, .55, .75))); C.append(Card(SIDE, 2.8, 8.75, 2.5, yaw=math.pi / 2, alpha=seg(t, .55, .75)))
-    C.append(Card(OTA, 0, 8.9, 2.5, tilt=popup(t, 0.45, .5)))
+    C.append(Card(INWALL, 0, 10.0, 5.6, tilt=kc)); C.append(Card(STRAW, 0, 7.55, 5.5, tilt=math.pi / 2, shadow=0, alpha=seg(t, .5, .7)))
+    C.append(Card(SIDEWALL, -2.8, 8.75, 2.5, yaw=math.pi / 2, alpha=seg(t, .55, .75), shadow=0)); C.append(Card(SIDEWALL, 2.8, 8.75, 2.5, yaw=math.pi / 2, alpha=seg(t, .55, .75), shadow=0))
+    C.append(Card(BRANCH, -0.3, 9.7, 5.0, y=2.2, tilt=kc, shadow=0))
+    C.append(Card(ORANG, -1.75, 9.1, 1.5, y=0.03 * abs(math.sin(t * 3)), tilt=popup(t, 0.5, .45)))
+    C.append(Card(PARROT, 1.9, 9.6, 0.45, y=2.75, tilt=kc, shadow=0))
+    C.append(Card(OTA, 0.35, 8.8, 2.5, tilt=popup(t, 0.45, .5)))
     kb = seg(t, T_ZOO - 0.14, T_ZOO)                                           # bars slam down on "zoo"
     if kb > 0: C.append(Card(BARS, 0, 7.5, 5.6, y=lerp(9.0, 0.0, kb * kb), shadow=.5))
     C.append(Card(ROOF, 0, 7.5, 5.9, y=3.92, shadow=0, alpha=seg(t, .6, .8)))
     C.append(Card(SIGN, 0, 7.45, 3.6, y=4.45, shadow=0, tilt=-popup(t, 0.7, .4) * .9))
-    # labels standing in the scene
+    # ---- labels standing in the scene
     k1 = back(seg(t, T('nineteen') - .05, T('nineteen') + .25), 1.8)
     if k1 > 0: C.append(Card(Y06, -0.1, 7.3, 2.5 * k1, y=6.05 + 2 * (1 - k1), shadow=0, fog=False, blur=0))
     k2 = back(seg(t, T_HUMAN, T_HUMAN + .22), 1.8)
     if k2 > 0: C.append(Card(HUMAN, 0.75, 7.3, 4.0 * k2, y=5.2, shadow=0, fog=False, blur=0))
     k3 = seg(t, T_ZOO - .1, T_ZOO)
     if k3 > 0: C.append(Card(ZOO, 0, 7.2, 3.6 * lerp(2.4, 1, k3 * k3), y=0.12, shadow=0, fog=False, blur=0, alpha=min(1, k3 * 2)))
-    # the crowd (seen from behind) - pops up row by row, then shuffles
+    # ---- the crowd (seen from behind): pops up row by row, shuffles; balloons, parasols, a press camera
     for i, (x, z, pi, hgt, ph) in enumerate(CROWD):
-        w = hgt * PEOPLE[pi].shape[1] / PEOPLE[pi].shape[0]
-        C.append(Card(PEOPLE[pi], x + 0.03 * math.sin(t * 1.7 + ph), z, w, y=0.02 * abs(math.sin(t * 2.2 + ph)), tilt=popup(t, 0.15 + (7.5 + z) * 0.045, .4), ph=ph))
+        w = hgt * PEOPLE[pi].shape[1] / PEOPLE[pi].shape[0]; tl = popup(t, 0.15 + (7.5 + z) * 0.045, .4)
+        px = x + 0.03 * math.sin(t * 1.7 + ph); py = 0.02 * abs(math.sin(t * 2.2 + ph))
+        C.append(Card(PEOPLE[pi], px, z, w, y=py, tilt=tl, ph=ph))
+        if tl < 0.05:
+            if i % 5 == 1: C.append(Card(BALLOONS[i % 3], px + 0.28 + 0.05 * math.sin(t * 2 + i), z + 0.02, 0.42, y=hgt * 0.55 + 0.05 * math.sin(t * 1.6 + i), shadow=0, sway=0.06, ph=i))
+            elif i % 5 == 3: C.append(Card(PARASOL, px + 0.1, z + 0.02, 1.15, y=hgt * 0.72, shadow=0))
+    C.append(Card(TRIPOD, 2.6, 6.0, 0.9, tilt=popup(t, .5, .4))); C.append(Card(TRIPOD, -5.9, -3.0, 0.9, tilt=popup(t, .2, .4)))
     return C
 
 
 def extra(img, cam, t):
     dust(img, cam, (0, 0.2, 7.4), t, T_ZOO, n=46, seed=3, speed=3.2)
+    k = math.exp(-max(0, t - (T_ZOO - 0.35)) * 7) * (t >= T_ZOO - 0.35)             # press-camera flash just before the bars land
+    if k > 0.03:
+        sp, Z = cam.project([(2.6, 1.3, 6.0)])
+        if Z[0] > 0.3:
+            lay = np.zeros((H // 4, W // 4), np.float32); cv2.circle(lay, (int(sp[0, 0] / 4), int(sp[0, 1] / 4)), int(6 + 12 * k), 1.0, -1)
+            img += cv2.resize(cv2.GaussianBlur(lay, (0, 0), 9), (W, H))[..., None] * k * 0.9
 
 
 def render(f):
