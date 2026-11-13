@@ -273,7 +273,9 @@ def scribble(dur=0.38):
 def tick(): n = int(0.05 * SR); tt = np.arange(n) / SR; return (np.sin(2 * np.pi * 2300 * tt) + 0.6 * np.sin(2 * np.pi * 4100 * tt)) * np.exp(-tt / 0.006)
 def riser(dur, f0=40, f1=120):
     n = int(dur * SR); tt = np.linspace(0, 1, n); return (np.sin(2 * np.pi * np.cumsum(f0 + (f1 - f0) * tt ** 2) / SR) * 0.6 + _filt(_a.normal(0, 1, n), 200, 3000) * 0.5 * tt) * tt ** 2.2
-def gunshot(): n = int(0.5 * SR); return _filt(_a.normal(0, 1, n), 200, 6000) * _env(n, 0.0005, 0.04) + thump(120, 50, 0.4, 0.06)[:n] * 0.6
+def gunshot():
+    n = int(0.5 * SR); th = np.zeros(n); t_ = thump(120, 50, 0.4, 0.06); th[:len(t_)] = t_
+    return _filt(_a.normal(0, 1, n), 200, 6000) * _env(n, 0.0005, 0.04) + th * 0.6
 
 
 # ------------------------------------------------------------------ CLI
