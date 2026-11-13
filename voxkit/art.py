@@ -729,3 +729,151 @@ def baggie(w=120, h=150, seed=0):
     cv2.rectangle(rgb, (4, int(h * .15)), (w - 4, int(h * .24)), (.80, .15, .12), -1)
     rgb[int(h * .3):] *= np.float32([.97, .97, .97])
     return rgba(rgb, m * 0.92)
+
+
+# ------------------------------------------------------------------ crime-story props (simple paper cut shapes)
+def _sh(pts, w, h, col, seed=0, holes=()): return shape(pts, w, h, col, seed, holes)
+
+
+def bathtub(w=620, h=330):
+    t = _sh([[(0, .25), (1, .25), (.95, .85), (.85, 1), (.15, 1), (.05, .85)]], w, h, (.93, .92, .88), 61)
+    cv2.rectangle(t, (int(w * .08), int(h * .28)), (int(w * .92), int(h * .36)), (.70, .72, .74, 1), -1)
+    for x in (.18, .82): cv2.rectangle(t, (int(w * x) - 14, int(h * .95)), (int(w * x) + 14, h - 1), (.3, .3, .3, 1), -1)
+    return t
+
+
+def house(w=620, h=520, col=(.80, .70, .55)):
+    hs = _sh([[(0, .42), (.5, 0), (1, .42), (.92, .42), (.92, 1), (.08, 1), (.08, .42)]], w, h, col, 62)
+    for x0, y0 in ((.2, .52), (.6, .52)): cv2.rectangle(hs, (int(w * x0), int(h * y0)), (int(w * (x0 + .2)), int(h * (y0 + .18))), (.15, .18, .28, 1), -1)
+    cv2.rectangle(hs, (int(w * .42), int(h * .72)), (int(w * .58), h - 1), (.30, .20, .14, 1), -1)
+    return hs
+
+
+def prison(w=900, h=560):
+    p = _sh([[(0, .25), (.12, .25), (.12, 0), (.24, 0), (.24, .25), (.76, .25), (.76, 0), (.88, 0), (.88, .25), (1, .25), (1, 1), (0, 1)]], w, h, (.55, .55, .58), 63)
+    for i in range(9):
+        x = int(w * (.08 + i * .1)); cv2.rectangle(p, (x, int(h * .45)), (x + int(w * .045), int(h * .62)), (.08, .08, .1, 1), -1)
+    cv2.line(p, (0, int(h * .3)), (w, int(h * .3)), (.2, .2, .22, 1), 6)
+    for i in range(30): x = int(i * w / 30); cv2.line(p, (x, int(h * .26)), (x + 12, int(h * .22)), (.15, .15, .15, 1), 3)    # razor wire
+    return p
+
+
+def motorbike(w=520, h=300):
+    m = np.zeros((h, w, 4), np.float32); c = (.12, .11, .10, 1)
+    for cx in (.2, .8): cv2.circle(m, (int(w * cx), int(h * .72)), int(h * .26), c, -1, cv2.LINE_AA); cv2.circle(m, (int(w * cx), int(h * .72)), int(h * .12), (.6, .58, .52, 1), -1, cv2.LINE_AA)
+    cv2.fillPoly(m, [np.int32([(w * .2, h * .7), (w * .35, h * .35), (w * .65, h * .35), (w * .8, h * .7), (w * .55, h * .6)])], (.70, .12, .08, 1), cv2.LINE_AA)
+    cv2.line(m, (int(w * .65), int(h * .35)), (int(w * .75), int(h * .15)), c, 12); cv2.line(m, (int(w * .7), int(h * .15)), (int(w * .85), int(h * .15)), c, 12)
+    m[..., :3] *= (0.9 + 0.1 * fbm(h, w, 20, 2, 5))[..., None]
+    return m
+
+
+def tv(inner, w=620, h=500):
+    t = _sh([[(0, 0), (1, 0), (1, .86), (0, .86)], [(.3, .86), (.7, .86), (.78, 1), (.22, 1)]], w, h, (.16, .14, .13), 64)
+    iw, ih = int(w * .84), int(h * .66); im = cv2.resize(inner, (iw, ih), interpolation=cv2.INTER_AREA)
+    paste(t, im, int(w * .08), int(h * .08))
+    sl = (np.arange(ih) % 6 < 2).astype(np.float32)[:, None, None] * 0.12
+    t[int(h * .08):int(h * .08) + ih, int(w * .08):int(w * .08) + iw, :3] *= (1 - sl)
+    return t
+
+
+def clapper(w=420, h=380):
+    c = _sh([[(0, .25), (1, .25), (1, 1), (0, 1)]], w, h, (.12, .12, .12), 65)
+    top = np.zeros((int(h * .2), w, 4), np.float32); top[..., 3] = 1; top[..., :3] = .1
+    for i in range(7):
+        x = int(i * w / 6); cv2.fillPoly(top, [np.int32([(x, 0), (x + w / 12, 0), (x + w / 12 - 30, top.shape[0]), (x - 30, top.shape[0])])], (.95, .93, .86, 1))
+    paste(c, top, 0, int(h * .02))
+    for y in (.45, .62, .79): cv2.line(c, (int(w * .08), int(h * y)), (int(w * .92), int(h * y)), (.9, .88, .8, 1), 3)
+    return c
+
+
+def plane(w=640, h=260):
+    return _sh([[(0, .45), (.15, .35), (.8, .35), (1, .5), (.8, .62), (.15, .62)], [(.35, .45), (.55, .45), (.35, 1), (.25, 1)], [(.35, .45), (.55, .45), (.38, 0), (.28, 0)], [(.02, .48), (.1, .48), (.04, .05), (0, .05)]], w, h, (.92, .91, .88), 66)
+
+
+def mirror(w=360, h=520):
+    m = _sh([[(.5 + .5 * math.cos(a), .5 + .5 * math.sin(a)) for a in np.linspace(0, 6.283, 60)]], w, h, (.75, .58, .25), 67)
+    g = np.zeros((h, w), np.float32); cv2.ellipse(g, (w // 2, h // 2), (int(w * .42), int(h * .43)), 0, 0, 360, 1.0, -1, cv2.LINE_AA)
+    glass = np.dstack([np.full((h, w), .62), np.full((h, w), .70), np.full((h, w), .78)]).astype(np.float32) + np.linspace(.15, -.1, w, dtype=np.float32)[None, :, None]
+    m[..., :3] = m[..., :3] * (1 - g[..., None]) + glass * g[..., None]
+    cv2.line(m, (int(w * .3), int(h * .2)), (int(w * .45), int(h * .12)), (.95, .95, .95, 1), 6)
+    return m
+
+
+def gavel(w=520, h=380):
+    g = _sh([[(.05, .1), (.55, .1), (.55, .42), (.05, .42)], [(.27, .38), (.35, .38), (.95, .95), (.87, 1)]], w, h, (.42, .26, .14), 68)
+    cv2.rectangle(g, (int(w * .05), int(h * .2)), (int(w * .55), int(h * .27)), (.75, .6, .25, 1), -1)
+    return g
+
+
+def bullet_hole(s=180, seed=0):
+    r = np.random.default_rng(seed); m = np.zeros((s, s), np.float32); c = s // 2
+    for i in range(9):
+        a = r.uniform(0, 6.283); L = r.uniform(.25, .48) * s; cv2.line(m, (c, c), (int(c + math.cos(a) * L), int(c + math.sin(a) * L)), 0.85, 2, cv2.LINE_AA)
+    cv2.circle(m, (c, c), int(s * .12), 0.9, -1, cv2.LINE_AA); cv2.circle(m, (c, c), int(s * .07), 1.0, -1, cv2.LINE_AA)
+    rgb = np.zeros((s, s, 3), np.float32); rgb[:] = (.04, .03, .03)
+    ring = np.zeros((s, s), np.float32); cv2.circle(ring, (c, c), int(s * .14), 1.0, 3, cv2.LINE_AA)
+    rgb = rgb * (1 - ring[..., None]) + np.float32([.85, .75, .55]) * ring[..., None]
+    return rgba(rgb, np.maximum(m, ring * .8))
+
+
+def muzzle(s=260, seed=0):
+    r = np.random.default_rng(seed); m = np.zeros((s, s), np.float32); c = s / 2
+    pts = [(c + math.cos(a) * (s * (.48 if i % 2 == 0 else .16) * r.uniform(.7, 1)), c + math.sin(a) * (s * (.48 if i % 2 == 0 else .16) * r.uniform(.7, 1))) for i, a in enumerate(np.linspace(0, 6.283, 17)[:-1])]
+    cv2.fillPoly(m, [np.int32(pts)], 1.0, cv2.LINE_AA)
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); rr = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / c
+    rgb = np.dstack([np.ones((s, s)), np.clip(1 - rr * .9, .3, 1), np.clip(.7 - rr, 0, 1)]).astype(np.float32)
+    return rgba(rgb, m)
+
+
+def moon(s=300):
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float32); c = s / 2
+    a = np.clip((c * .95 - np.sqrt((xx - c) ** 2 + (yy - c) ** 2)) / 1.5, 0, 1) * np.clip((np.sqrt((xx - c * 1.35) ** 2 + (yy - c * .8) ** 2) - c * .75) / 1.5, 0, 1)
+    return rgba(paper(s, s, np.array([.95, .92, .78], np.float32), 70, .04, .1), a)
+
+
+def skyline(w=1600, h=700, seed=0, col=(.22, .22, .30)):
+    r = np.random.default_rng(seed); m = np.zeros((h, w), np.float32); x = 0
+    rgb = paper(h, w, np.asarray(col, np.float32), seed, .05, .2)
+    while x < w:
+        bw = int(r.integers(60, 160)); bh = int(r.uniform(.25, .95) * h)
+        cv2.rectangle(m, (x, h - bh), (x + bw, h), 1.0, -1)
+        for wy in range(h - bh + 20, h - 10, 34):
+            for wx in range(x + 12, x + bw - 16, 26):
+                if r.random() < .35: cv2.rectangle(rgb, (wx, wy), (wx + 10, wy + 14), (.95, .85, .5), -1)
+        if r.random() < .2: cv2.line(m, (x + bw // 2, h - bh), (x + bw // 2, h - bh - 70), 1.0, 6)
+        x += bw + int(r.integers(4, 20))
+    return rgba(rgb, m)
+
+
+def palm(w=360, h=640):
+    p = np.zeros((h, w, 4), np.float32); c = (.10, .26, .16, 1)
+    pts = [(w * .5 + 40 * math.sin(k * 2.2), h - k * h * .7) for k in np.linspace(0, 1, 20)]
+    cv2.polylines(p, [np.int32(pts)], False, (.40, .28, .18, 1), 22, cv2.LINE_AA)
+    tx, ty = pts[-1]
+    for a in np.linspace(-2.9, -0.2, 6):
+        tip = (tx + math.cos(a) * w * .55, ty + math.sin(a) * h * .12 + 60)
+        mid = ((tx + tip[0]) / 2, (ty + tip[1]) / 2 - 40)
+        cv2.fillPoly(p, [np.int32([(tx, ty), mid, tip, (mid[0], mid[1] + 30)])], c, cv2.LINE_AA)
+    return p
+
+
+def bubble(w=360, h=150, col=(.20, .55, .95)):
+    b = _sh([[(0, .1), (.05, 0), (.95, 0), (1, .1), (1, .78), (.95, .85), (.2, .85), (.08, 1), (.1, .85), (.05, .85), (0, .78)]], w, h, col, 71)
+    for y in (.3, .55): cv2.line(b, (int(w * .1), int(h * y)), (int(w * (.85 if y < .5 else .6)), int(h * y)), (.95, .95, .95, 1), 9)
+    return b
+
+
+def heart_broken(s=260):
+    hh = heart(s); L = hh.copy(); R = hh.copy()
+    zig = np.int32([(s * .5, 0), (s * .44, s * .3), (s * .56, s * .45), (s * .46, s * .62), (s * .52, s)])
+    mL = np.zeros((s, s), np.float32); cv2.fillPoly(mL, [np.concatenate([zig, np.int32([(0, s), (0, 0)])])], 1.0)
+    L[..., 3] *= mL; R[..., 3] *= 1 - mL
+    return L, R
+
+
+def clock_face(hh, mm, s=520):
+    d = dial(s); c = s // 2
+    for ang, L, wd in ((((hh % 12) + mm / 60) / 12 * 6.283, .28, 16), (mm / 60 * 6.283, .4, 10)):
+        cv2.line(d, (c, c), (int(c + math.sin(ang) * s * L), int(c - math.cos(ang) * s * L)), (.1, .08, .07, 1), wd, cv2.LINE_AA)
+    cv2.circle(d, (c, c), 14, (.8, .3, .1, 1), -1, cv2.LINE_AA)
+    return d

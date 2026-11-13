@@ -8,3 +8,4 @@ out/preview_*
 __pycache__/
 out/nvspy/
 out/chapo_sample/
+out/chapo/
