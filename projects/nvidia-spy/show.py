@@ -47,9 +47,11 @@ def printspr(key, w, fallback=None, **kw): return art.photo_print(WM(key), w=w, 
 
 # ------------------------------------------------------------------ assets
 B = os.path.join(PH, 'user_bench.jpg'); CHAIR = [(120, 360, 50), (115, 450, 50), (110, 540, 50), (120, 640, 50), (150, 325, 35), (75, 700, 50)]
-ABUST = art.photo_cutout(B, (150, 235, 300, 480), out_h=800, clip_y=700, fg_hint=[(300, 400, 80), (290, 620, 80)], bg_hint=CHAIR + [(480, 260, 40), (520, 400, 70)])
-AFULL = art.photo_cutout(B, (105, 235, 330, 996), out_h=900, fg_hint=[(300, 400, 80), (250, 750, 100), (400, 1100, 70)], bg_hint=CHAIR + [(520, 330, 95), (620, 600, 130), (650, 1000, 130), (60, 1150, 40), (520, 520, 60)])
-JSEAT = art.photo_cutout(B, (385, 240, 470, 991), out_h=900, fg_hint=[(520, 340, 90), (600, 650, 150), (600, 1050, 120)], bg_hint=[(250, 500, 100), (880, 300, 50), (200, 1000, 80), (890, 900, 30)])
+AP = os.path.join(PH, 'user_alice_portrait.jpg'); _abg = [(90, 150, 85), (60, 330, 60), (825, 110, 80), (860, 320, 55), (100, 560, 85), (55, 690, 45), (870, 600, 45), (880, 820, 40), (150, 905, 55), (55, 850, 40), (170, 40, 50), (760, 30, 40)]
+ABUST = art.photo_cutout(AP, (150, 2, 660, 600), out_h=800, clip_y=600, fg_hint=[(460, 210, 90), (460, 480, 110)], bg_hint=_abg)
+AFULL = art.photo_cutout(AP, (80, 2, 730, 933), out_h=900, fg_hint=[(460, 210, 90), (460, 640, 150), (230, 745, 25)], bg_hint=_abg)
+JP = os.path.join(PH, 'user_jensen_portrait.jpg')
+JSEAT = art.photo_cutout(JP, (80, 12, 550, 688), out_h=900, fg_hint=[(300, 150, 70), (350, 480, 150)], bg_hint=[(100, 120, 80), (120, 245, 40), (500, 110, 90), (480, 240, 45), (610, 200, 60), (40, 200, 40), (650, 40, 40), (40, 40, 40)])
 PAIR = art.photo_print(B, (60, 180, 820, 900), w=560, caption_h=70)
 EMBR = art.photo_print(os.path.join(PH, 'user_embrace.jpg'), (330, 340, 675, 1100), w=520, caption_h=70)
 LJ = os.path.join(PH, 'user_lori_jensen.webp')
@@ -57,8 +59,8 @@ LORI = art.photo_cutout(LJ, (40, 65, 195, 330), out_h=700, clip_y=390, fg_hint=[
 COUPLE = art.photo_cutout(LJ, (30, 20, 425, 623), out_h=900, fg_hint=[(160, 150, 45), (140, 400, 70), (280, 100, 50), (330, 350, 90), (320, 560, 60)], bg_hint=[(30, 40, 30), (450, 40, 20), (110, 30, 25), (460, 300, 10)])
 XI = art.photo_cutout(os.path.join(PH, 'xi_0.jpg'), (20, 60, 790, 1094), out_h=800, fg_hint=[(410, 350, 170), (410, 900, 200), (150, 1030, 90), (690, 1030, 90)],
                       bg_hint=[(80, 150, 70), (740, 150, 70), (50, 480, 40), (775, 460, 35), (60, 650, 30), (770, 640, 25), (90, 300, 80)])
-JHEAD = art.photo_cutout(os.path.join(PH, 'jensen_front.jpg'), (50, 15, 560, 650), out_h=700, clip_y=600, cell=4.5, fg_hint=[(300, 330, 150)], bg_hint=[(560, 90, 110), (600, 300, 60), (30, 60, 40)])
-JBUST = art.photo_cutout(os.path.join(PH, 'jensen_jacket.jpg'), (0, 20, 1129, 1658), out_h=700, clip_y=1230, fg_hint=[(560, 500, 250)], bg_hint=[(80, 300, 120), (1050, 650, 80), (1050, 120, 80)])
+JHEAD = art.photo_cutout(JP, (185, 12, 220, 262), out_h=700, clip_y=268, cell=4.5, fg_hint=[(298, 150, 70)], bg_hint=[(110, 100, 45), (490, 100, 45), (298, 4, 6)])
+JBUST = art.photo_cutout(JP, (80, 12, 550, 400), out_h=700, clip_y=400, fg_hint=[(300, 150, 70), (330, 340, 60)], bg_hint=[(100, 120, 80), (120, 245, 40), (500, 110, 90), (480, 240, 45), (610, 200, 60), (40, 200, 40), (650, 40, 40), (40, 40, 40)])
 MAN = art.collage_man(JHEAD, 330); EXEC = art.man(300, 500)
 BAR = art.bar(); CHIP = art.chip(); SCHIP = fit(CHIP, 150); BILLS = [art.bill(seed=i) for i in range(3)]
 FLAG = art.flag(900, 600); F_US = art.flag_us(900, 480); F_TW = art.flag_tw(600, 400); F_MY = art.flag_my(700, 350)
@@ -101,7 +103,7 @@ def BG(rays, y=-200, spin=0.3): return E(rays, 0, y, 1.5, d=0.9, sh=0, spin=spin
 def grid(spr, pts, t0, step=0.07, s=1.0, d=-0.1, a='pop'): return [E(spr, x, y, s, r=0.15 * (-1) ** i, d=d, t=t0 + i * step, a=a) for i, (x, y) in enumerate(pts)]
 def arc(x0, y0, x1, y1, bend=0.2, n=24): return [(lerp(x0, x1, i / n) - (y1 - y0) * bend * math.sin(math.pi * i / n), lerp(y0, y1, i / n) + (x1 - x0) * bend * math.sin(math.pi * i / n)) for i in range(n + 1)]
 def circ(cx, cy, rx, ry, n=70): return [(cx + rx * math.cos(a) * (1 + .03 * math.sin(3 * a)), cy + ry * math.sin(a) + 4 * a) for a in np.linspace(-2.0, -2.0 + 6.9, n)]
-def eyes(spr, x, y, s=1.0): return x + (0.57 - 0.5) * spr.shape[1] * s, y + (0.305 - 0.5) * spr.shape[0] * s
+def eyes(spr, x, y, s=1.0): return x + (0.47 - 0.5) * spr.shape[1] * s, y + (0.345 - 0.5) * spr.shape[0] * s
 
 
 def rain(sprs, t0, t1, n, seed, s=0.6, spread=540):
@@ -237,12 +239,12 @@ def fall(fr, t, ox, oy):
 # ------------------------------------------------------------------ the shots
 A1 = fit(ABUST, h=980); ex1 = eyes(A1, 0, -170)
 J2 = fit(JSEAT, h=1020)
-A4 = fit(AFULL, h=1180)
+A4 = fit(AFULL, h=1080)
 A5 = fit(ABUST, h=820); ex5 = eyes(A5, 0, 270)
 X6 = fit(XI, h=900); A6 = fit(ABUST, h=430); J6 = fit(JHEAD, h=380); ex6 = eyes(A6, -260, 560)
 J7 = fit(JBUST, h=900)
 C8 = fit(COUPLE, h=1050)
-A9 = fit(AFULL, h=900); J9 = fit(JSEAT, h=900)
+A9 = fit(AFULL, h=800); J9 = fit(JSEAT, h=760)
 A11 = fit(ABUST, h=420)
 L16 = fit(LORI, h=760)
 A17 = fit(ABUST, h=420)
@@ -480,21 +482,21 @@ def soundtrack(path):
         Lc[i:i + len(x)] += x * g * (1 - max(0, pan)); Rc[i:i + len(x)] += x * g * (1 + min(0, pan))
     tt = np.arange(len(Lc)) / SR
     add((np.sin(2 * np.pi * 43.6 * tt) + 0.5 * np.sin(2 * np.pi * 65.4 * tt + 1) + 0.25 * np.sin(2 * np.pi * 87.3 * tt)) * (0.6 + 0.4 * np.sin(2 * np.pi * tt / 8 - 1.2)), 0, 0.05)
-    for hb in np.arange(0.35, DUR, 60 / 46): add(thump(58, 36, 0.4, 0.09), hb, 0.13); add(thump(52, 34, 0.4, 0.08), hb + 0.19, 0.08)
+    for hb in np.arange(0.35, DUR, 60 / 46): add(thump(58, 36, 0.4, 0.09), hb, 0.08); add(thump(52, 34, 0.4, 0.08), hb + 0.19, 0.05)
     for sh in SHOTS:
-        if sh['t'] > 0.2: add(whoosh(0.5, 250, 3000, 0.5), sh['t'] - 0.25, 0.36, _a.uniform(-.5, .5))
+        if sh['t'] > 0.2: add(whoosh(0.5, 250, 2400, 0.5), sh['t'] - 0.25, 0.16, _a.uniform(-.5, .5))
         for e in sh['els']:
             pan = float(np.clip(getattr(e, 'x', 0) / 700, -.6, .6))
-            if e.kind == 'stroke': add(scribble(max(0.15, e.dur)), e.t, 0.13, pan)
+            if e.kind == 'stroke': add(scribble(max(0.15, e.dur)), e.t, 0.045, pan)
             elif e.kind == 'el' and e.t is not None and not e.quiet:
-                if e.a == 'slam': add(thump(82, 32, 0.8, 0.18), e.hit, 0.7); add(nburst(0.3, 300, 4000, 0.05), e.hit, 0.36, pan)
-                elif e.a == 'pop': add(thump(170, 95, 0.12, 0.03), e.t, 0.16, pan); add(nburst(0.07, 1500, 7000, 0.012), e.t + .05, 0.10, pan)
-                else: add(whoosh(0.32, 500, 4500, 0.7), e.t - 0.05, 0.14, pan); add(thump(120, 60, 0.2, 0.05), e.hit + .15, 0.2, pan)
-    for i in range(28): add(tick(), T('give') + .1 + i * 2.2 / 28, 0.15)
-    for tr, d_ in ((T('dropped') - 1.0, 1.0), (T('resigned') - 1.1, 1.1), (T('four') - .9, .9), (T('four', 5) - 1.0, 1.0), (11.3, 1.3)): add(riser(d_), tr, 0.32)
-    for i in range(5): add(nburst(0.1, 2500, 9000, 0.02), (T('cameras') + .15, T('caught'), T('kissing'), T('cheek'), T('public'))[i], 0.3)
-    add(_filt(_a.normal(0, 1, int(1.6 * SR)), 80, 500) * _env(int(1.6 * SR), 0.2, 0.6), T('they'), 0.25)                      # car rumble
-    hiss = _filt(_a.normal(0, 1, int(2.2 * SR)), 1500, 6000) * (0.5 + 0.5 * np.sin(2 * np.pi * 9 * np.arange(int(2.2 * SR)) / SR)); add(hiss * _env(len(hiss), 0.2, 1.2), T('listening'), 0.05)
+                if e.a == 'slam': add(thump(82, 32, 0.6, 0.14), e.hit, 0.30); add(nburst(0.25, 300, 3000, 0.04), e.hit, 0.10, pan)
+                elif e.a == 'pop': add(thump(170, 95, 0.12, 0.03), e.t, 0.06, pan); add(nburst(0.07, 1500, 6000, 0.012), e.t + .05, 0.03, pan)
+                else: add(whoosh(0.32, 500, 3500, 0.7), e.t - 0.05, 0.06, pan); add(thump(120, 60, 0.2, 0.05), e.hit + .15, 0.07, pan)
+    for i in range(28): add(tick(), T('give') + .1 + i * 2.2 / 28, 0.06)
+    for tr, d_ in ((T('dropped') - 1.0, 1.0), (T('resigned') - 1.1, 1.1), (T('four') - .9, .9), (T('four', 5) - 1.0, 1.0), (11.3, 1.3)): add(riser(d_), tr, 0.13)
+    for i in range(5): add(nburst(0.1, 2500, 9000, 0.02), (T('cameras') + .15, T('caught'), T('kissing'), T('cheek'), T('public'))[i], 0.10)
+    add(_filt(_a.normal(0, 1, int(1.6 * SR)), 80, 500) * _env(int(1.6 * SR), 0.2, 0.6), T('they'), 0.10)                      # car rumble
+    hiss = _filt(_a.normal(0, 1, int(2.2 * SR)), 1500, 6000) * (0.5 + 0.5 * np.sin(2 * np.pi * 9 * np.arange(int(2.2 * SR)) / SR)); add(hiss * _env(len(hiss), 0.2, 1.2), T('listening'), 0.025)
     mix = np.stack([Lc, Rc], 1)[:n]; mix[-int(0.2 * SR):] *= np.linspace(1, 0, int(0.2 * SR))[:, None]
     w = wavmod.open(path, 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.tanh(mix * 1.1) * 0.9 * 32767).astype(np.int16).tobytes()); w.close()
 
