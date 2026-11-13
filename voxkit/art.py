@@ -98,7 +98,7 @@ def woman(w=760, h=920, smile=False):
     return cutout(_light(g, mk, 3), mk, 5.0, 14, seed=31)
 
 
-def man(w=380, h=640):
+def man(w=380, h=640, head=True):
     """Anonymous executive, full body: silver hair, black leather jacket, dark trousers."""
     S = 3; W2, H2 = w * S, h * S
     im = _L(W2, H2); d = ImageDraw.Draw(im); m = _L(W2, H2); dm = ImageDraw.Draw(m)
@@ -115,16 +115,18 @@ def man(w=380, h=640):
     d.polygon([(cx - W2 * .13, H2 * .185), (cx - W2 * .05, H2 * .20), (cx - W2 * .02, H2 * .36), (cx - W2 * .15, H2 * .27)], fill=64)          # lapel sheen
     d.polygon([(cx + W2 * .13, H2 * .185), (cx + W2 * .05, H2 * .20), (cx + W2 * .02, H2 * .36), (cx + W2 * .15, H2 * .27)], fill=64)
     d.line([(cx - W2 * .27, H2 * .30), (cx - W2 * .24, H2 * .52)], fill=70, width=int(W2 * .012)); d.line([(cx + W2 * .27, H2 * .30), (cx + W2 * .24, H2 * .52)], fill=70, width=int(W2 * .012))
-    both('rectangle', [cx - W2 * .055, H2 * .15, cx + W2 * .055, H2 * .20], fill=160)                                                          # neck
-    both('ellipse', [cx - W2 * .125, H2 * .035, cx + W2 * .125, H2 * .175], fill=198)                                                         # head
-    both('pieslice', [cx - W2 * .14, H2 * .018, cx + W2 * .14, H2 * .15], 180, 360, fill=226)                                                 # silver hair
-    d.polygon([(cx - W2 * .14, H2 * .085), (cx - W2 * .125, H2 * .115), (cx - W2 * .10, H2 * .08)], fill=226); d.polygon([(cx + W2 * .14, H2 * .085), (cx + W2 * .125, H2 * .115), (cx + W2 * .10, H2 * .08)], fill=226)
-    d.line([(cx - W2 * .04, H2 * .148), (cx + W2 * .04, H2 * .148)], fill=110, width=int(H2 * .005))
+    if head:
+        both('rectangle', [cx - W2 * .055, H2 * .15, cx + W2 * .055, H2 * .20], fill=160)                                                          # neck
+        both('ellipse', [cx - W2 * .125, H2 * .035, cx + W2 * .125, H2 * .175], fill=198)                                                         # head
+        both('pieslice', [cx - W2 * .14, H2 * .018, cx + W2 * .14, H2 * .15], 180, 360, fill=226)                                                 # silver hair
+        d.polygon([(cx - W2 * .14, H2 * .085), (cx - W2 * .125, H2 * .115), (cx - W2 * .10, H2 * .08)], fill=226); d.polygon([(cx + W2 * .14, H2 * .085), (cx + W2 * .125, H2 * .115), (cx + W2 * .10, H2 * .08)], fill=226)
+        d.line([(cx - W2 * .04, H2 * .148), (cx + W2 * .04, H2 * .148)], fill=110, width=int(H2 * .005))
     g = cv2.resize(_soft(_np(im), 2.5), (w, h), interpolation=cv2.INTER_AREA); mk = cv2.resize(_np(m), (w, h), interpolation=cv2.INTER_AREA)
     spr = cutout(_light(g, mk, 8, 0.16), mk, 4.0, 10, seed=41)
-    by, bh = int(h * .088), int(h * .03)                                                                                                     # baked censor bar
-    x0, x1 = int(w * .345), int(w * .655)
-    spr[by:by + bh, x0:x1, :3] = np.array([.05, .045, .04], np.float32); spr[by:by + bh, x0:x1, 3] = 1
+    if head:
+        by, bh = int(h * .088), int(h * .03)                                                                                                     # baked censor bar
+        x0, x1 = int(w * .345), int(w * .655)
+        spr[by:by + bh, x0:x1, :3] = np.array([.05, .045, .04], np.float32); spr[by:by + bh, x0:x1, 3] = 1
     return spr
 
 
@@ -390,7 +392,7 @@ def stamp(txt, size=120, col=RED, seed=0):
 
 
 # ------------------------------------------------------------------ real photo -> archival cutout
-def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, fg_hint=None):
+def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, fg_hint=None, clip_y=None, bg_hint=None):
     """Cut a person out of a photo and print them as a monochrome halftone cutout with a white paper border.
     rect = (x, y, w, h) box around the person in photo pixels; fg_hint = optional list of (x, y, r) sure-foreground discs."""
     img = cv2.imread(path)
@@ -405,11 +407,14 @@ def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, f
     cv2.ellipse(mask, (r[0] + r[2] // 2, r[1] + int(r[3] * .45)), (int(r[2] * .22), int(r[3] * .30)), 0, 0, 360, cv2.GC_FGD, -1)
     for fx, fy, fr in (fg_hint or []):
         cv2.circle(mask, (int((fx - x0) * k), int((fy - y0) * k)), int(fr * k), cv2.GC_FGD, -1)
+    for fx, fy, fr in (bg_hint or []):
+        cv2.circle(mask, (int((fx - x0) * k), int((fy - y0) * k)), int(fr * k), cv2.GC_BGD, -1)
     bgd, fgd = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
     cv2.grabCut(small, mask, None, bgd, fgd, 6, cv2.GC_INIT_WITH_MASK)
     m = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(m)                      # keep the biggest blob only
     if n > 1: m = (lab == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])).astype(np.uint8)
+    if clip_y is not None: m[int((clip_y - y0) * k):] = 0
     m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
     ys, xs = np.where(m > 0); bx0, bx1, by0, by1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
     s = out_h / ((by1 - by0) / k)
@@ -421,3 +426,20 @@ def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, f
     g = cv2.copyMakeBorder(g[Y0:Y1, X0:X1], P, P, P, P, cv2.BORDER_REPLICATE); mk = cv2.copyMakeBorder(mb[Y0:Y1, X0:X1], P, P, P, P, cv2.BORDER_CONSTANT, value=0)
     lo, hi = np.percentile(g[mk > 0.5], (2, 98)); g = np.clip((g - lo) / max(hi - lo, 1e-3), 0, 1) ** 0.9 * 0.9 + 0.06   # archival print contrast
     return cutout(g, mk, cell, border, seed=seed, gain=gain)
+
+
+def paste(dst, src, x, y):
+    """Alpha-composite sprite src onto sprite dst with its top-left at (x, y)."""
+    h, w = src.shape[:2]; reg = dst[y:y + h, x:x + w]; a = src[..., 3:4]
+    reg[..., :3] = reg[..., :3] * (1 - a) + src[..., :3] * a; reg[..., 3:4] = np.maximum(reg[..., 3:4], a)
+    return dst
+
+
+def collage_man(head_spr, head_h=250):
+    """Real photo head pasted on the drawn leather-jacket body."""
+    body = man(head=False); k = head_h / head_spr.shape[0]
+    hd = cv2.resize(head_spr, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+    W_, top = 420, head_h - 150
+    out = np.zeros((body.shape[0] + top, W_, 4), np.float32)
+    paste(out, body, (W_ - body.shape[1]) // 2, top)
+    return paste(out, hd, (W_ - hd.shape[1]) // 2, 0)

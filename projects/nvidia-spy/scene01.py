@@ -12,7 +12,11 @@ DUR = 12.4
 VOICE = os.path.join(HERE, 'voice', 'full.mp3'); V0 = 0.0
 
 # ------------------------------------------------------------------ assets
-EYE = art.eye_plate(); BAR = art.bar(); WOMAN = art.woman(); MAN = art.man()
+EYE = art.eye_plate(); BAR = art.bar(); WOMAN = art.woman()
+PH = os.path.join(HERE, 'photos')
+JHEAD = art.photo_cutout(os.path.join(PH, 'jensen_front.jpg'), (50, 15, 560, 650), out_h=700, clip_y=600, cell=4.5, fg_hint=[(300, 330, 150)], bg_hint=[(560, 90, 110), (600, 300, 60), (30, 60, 40)])
+JBUST = art.photo_cutout(os.path.join(PH, 'jensen_jacket.jpg'), (0, 20, 1129, 1658), out_h=620, clip_y=1230, fg_hint=[(560, 500, 250)], bg_hint=[(80, 300, 120), (1050, 650, 80), (1050, 120, 80)])
+MAN = art.collage_man(JHEAD, 330)
 PAGE = art.page(portrait=WOMAN)
 T_BOT = art.tower(9, seed=3, torn_top=True); T_TOP = art.tower(4, seed=40, torn_bot=True)
 RIDGE_A = art.ridge(2600, 620, 1, dark=0.82); RIDGE_B = art.ridge(2600, 620, 7, dark=0.62, amp=200)
@@ -128,14 +132,16 @@ def world_frame(t, cam):
     # ---- zone A: front page on the evidence board
     if cam.x < 2300 and cam.y < 2500:
         fr.put(FLAG, 330, -520, 0.62, rot=0.16, depth=0.35, shadow=0.5)
-        fr.put(DOCS[0], -390, -560, 0.9, rot=-0.2, depth=0.2); fr.put(DOCS[1], -400, 560, 0.95, rot=0.12, depth=0.2); fr.put(DOCS[2], 420, 520, 0.9, rot=-0.1, depth=0.2)
-        fr.put(BILLS[0], 430, 760, 0.8, rot=0.5, depth=0.1); fr.put(SMALLCHIP, -430, 820, 1.2, rot=-0.3, depth=0.1)
+        fr.put(DOCS[0], -390, -560, 0.9, rot=-0.2, depth=0.2); fr.put(DOCS[1], -400, 560, 0.95, rot=0.12, depth=0.2); fr.put(DOCS[2], 440, 300, 0.9, rot=-0.1, depth=0.2)
+        fr.put(SMALLCHIP, -430, 820, 1.2, rot=-0.3, depth=0.1)
         fr.put(PAGE, 0, 0, 1.0, rot=0.02)
         fr.put(BAR, 0, -148, 0.25, rot=-0.012, shadow=0.6, sh_off=(4, 9))
         for sxn in (-1, 1): fr.put(TAPE, sxn * 400, -610, 1.0, rot=0.6 * sxn, shadow=0.25, sh_off=(3, 5))
         k = seg(t, 1.88, 1.98)
         if k > 0: fr.put(CLASS, 60, 420, 0.62 * lerp(2.4, 1, k * k), rot=-0.2, alpha=k, shadow=0, depth=-0.02, blur=0)
         stroke(fr, STRING1, 1.0, art.RED * 0.9, 5)
+        stroke(fr, [(180, -420), (260, 0), (330, 430)], 1.0, art.RED * 0.9, 5)
+        fr.put(JBUST, 330, 640, 0.62, rot=0.1, depth=-0.03, shadow=0.6); fr.put(PIN, 330, 440, 0.9, depth=-0.03, shadow=0.5, sh_off=(4, 8))
         fr.put(PIN, 180, -420, 0.9, shadow=0.5, sh_off=(4, 8))
 
     # ---- zone B: the tower and the fall
@@ -154,7 +160,7 @@ def world_frame(t, cam):
         topy = G + 20 - T_BOT.shape[0] + 70
         fr.put(T_TOP, BX - 330 * k * k, topy + 1500 * k ** 2.2, 1.0, rot=-1.15 * k ** 1.3 - 0.05 * math.sin(seg(t, T_RIP - .25, T_RIP) * 9) * (t < T_RIP), anchor=(0.5, 1), depth=0.05)
         feet = topy - T_TOP.shape[0] + 14
-        ms = 0.92; mh = MAN.shape[0] * ms
+        ms = 0.84; mh = MAN.shape[0] * ms
         kf = seg(t, T_RIP, T_LAND)
         stroke(fr, CRASH, kf ** 0.8, ORANGE, 15)
         if 0 < kf:                                                               # arrow head on the crash line
@@ -220,12 +226,12 @@ def world_frame(t, cam):
         fr.put(RAYS_O, DX, 5150, 1.5, rot=t * 0.9, depth=0.6, shadow=0, blur=2)
         fr.put(RIDGE_B, DX - 200, 4300, 1.3, depth=0.9, anchor=(0.5, 0), shadow=0.3, alpha=0.0)
         fr.put(RIDGE_A, DX, 5950, 1.45, depth=-0.3, anchor=(0.5, 0), shadow=0.5, sh_off=(0, -20))
-        orb = [(NVS, .62), (SMALLCHIP, 1.1), (FLAG, .2), (BILLS[0], .6), (DOCS[0], .42), (SMALLCHIP, 1.0), (NVS, .5), (BILLS[2], .55)]
+        orb = [(NVS, .62), (SMALLCHIP, 1.1), (FLAG, .2), (BILLS[0], .6), (JBUST, .42), (SMALLCHIP, 1.0), (NVS, .5), (BILLS[2], .55)]
         for i, (sp, sc) in enumerate(orb):
             k = pop(t, 9.5 + i * 0.09, 0.22, 2.4)
             if k > 0:
                 a = i / len(orb) * 2 * math.pi + t * 0.5; R = (560 + 60 * (i % 2)) * (1 + 0.9 * ein(seg(t, 11.0, 12.2), 2))
-                fr.put(sp, DX + math.cos(a) * R * 0.86, 5150 + math.sin(a) * R * 1.25, sc * k, rot=math.sin(t * 2 + i) * .3 + i, depth=(-0.25, 0.25)[i % 2], shadow=0.5)
+                fr.put(sp, DX + math.cos(a) * R * 0.86, 5150 + math.sin(a) * R * 1.25, sc * k, rot=math.sin(t * 2 + i) * .3 + (0 if sp is JBUST else i), depth=(-0.25, 0.25)[i % 2], shadow=0.5)
         k = back(seg(t, 9.25, 9.6), 2.2)
         press = 26 * math.exp(-max(0, t - 9.62) * 14) * (t >= 9.55)
         fr.put(CROWN, DX, 5150 - 470 * k + press, 1.0 * k, anchor=(0.5, 1), shadow=0.5)
