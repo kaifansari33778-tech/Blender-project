@@ -392,7 +392,7 @@ def stamp(txt, size=120, col=RED, seed=0):
 
 
 # ------------------------------------------------------------------ real photo -> archival cutout
-def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, fg_hint=None, clip_y=None, bg_hint=None):
+def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, fg_hint=None, clip_y=None, bg_hint=None, core=True):
     """Cut a person out of a photo and print them as a monochrome halftone cutout with a white paper border.
     rect = (x, y, w, h) box around the person in photo pixels; fg_hint = optional list of (x, y, r) sure-foreground discs."""
     img = cv2.imread(path)
@@ -404,7 +404,7 @@ def photo_cutout(path, rect, out_h=900, cell=5.0, border=14, seed=0, gain=1.0, f
     r = (int((x - x0) * k), int((y - y0) * k), int(w * k), int(h * k))
     mask[r[1]:r[1] + r[3], r[0]:r[0] + r[2]] = cv2.GC_PR_FGD
     mask[:3], mask[:, :3], mask[:, -3:] = cv2.GC_BGD, cv2.GC_BGD, cv2.GC_BGD
-    cv2.ellipse(mask, (r[0] + r[2] // 2, r[1] + int(r[3] * .45)), (int(r[2] * .22), int(r[3] * .30)), 0, 0, 360, cv2.GC_FGD, -1)
+    if core: cv2.ellipse(mask, (r[0] + r[2] // 2, r[1] + int(r[3] * .45)), (int(r[2] * .22), int(r[3] * .30)), 0, 0, 360, cv2.GC_FGD, -1)
     for fx, fy, fr in (fg_hint or []):
         cv2.circle(mask, (int((fx - x0) * k), int((fy - y0) * k)), int(fr * k), cv2.GC_FGD, -1)
     for fx, fy, fr in (bg_hint or []):
@@ -621,3 +621,89 @@ def seal(txt, s=320, col=(.14, .17, .36), seed=0):
     th, tw = t.shape[:2]; x, y = (s - tw) // 2, (s - th) // 2; a = t[..., 3:4]
     rgb[y:y + th, x:x + tw] = rgb[y:y + th, x:x + tw] * (1 - a) + t[..., :3] * a
     return rgba(rgb, np.clip((1 - rr) * c / 1.5, 0, 1))
+
+
+# ------------------------------------------------------------------ Mexico / cartel kit
+MXG = np.array([0.0, 0.42, 0.25], np.float32); MXR = np.array([0.81, 0.07, 0.15], np.float32)
+
+
+def flag_mx(w=1200, h=686, seed=0):
+    rgb = np.zeros((h, w, 3), np.float32); rgb[:, :w // 3] = MXG; rgb[:, w // 3:2 * w // 3] = (.95, .93, .86); rgb[:, 2 * w // 3:] = MXR
+    cx, cy, R = w // 2, h // 2, h * 0.26
+    br = (.45, .30, .14); gr = (.18, .45, .20)
+    cv2.ellipse(rgb, (cx, int(cy + R * .15)), (int(R * .95), int(R * .95)), 0, 20, 160, gr, int(R * .12), cv2.LINE_AA)          # wreath
+    cv2.ellipse(rgb, (cx, int(cy + R * .55)), (int(R * .5), int(R * .12)), 0, 0, 360, (.20, .45, .62), -1, cv2.LINE_AA)       # lake
+    cv2.fillPoly(rgb, [np.int32([(cx - R * .12, cy + R * .5), (cx - R * .12, cy), (cx - R * .35, cy - R * .05), (cx - R * .3, cy + R * .2), (cx + R * .3, cy + R * .2), (cx + R * .35, cy - R * .05), (cx + R * .12, cy), (cx + R * .12, cy + R * .5)])], gr, cv2.LINE_AA)  # cactus
+    eagle = [(cx - R * .55, cy - R * .25), (cx - R * .2, cy - R * .75), (cx + R * .05, cy - R * .5), (cx + R * .35, cy - R * .85), (cx + R * .55, cy - R * .45), (cx + R * .3, cy - R * .1), (cx + R * .1, cy + R * .05), (cx - R * .15, cy - R * .05)]
+    cv2.fillPoly(rgb, [np.int32(eagle)], br, cv2.LINE_AA)
+    cv2.circle(rgb, (int(cx + R * .42), int(cy - R * .72)), int(R * .12), br, -1, cv2.LINE_AA)
+    return _flag_base(rgb, seed + 50)
+
+
+def horns(w=520, h=280, col=None):
+    """Pair of curved devil horns (red paper)."""
+    col = np.array([.78, .06, .06], np.float32) if col is None else col
+    m = np.zeros((h, w), np.float32)
+    for sg in (-1, 1):
+        cx = w / 2 + sg * w * .28; base = w * .13
+        outer = [(cx + sg * (base * (1 - k) * 1.0 + w * .16 * k ** 1.6), h - h * .96 * k) for k in np.linspace(0, 1, 40)]
+        inner = [(cx - sg * base * (1 - k) + sg * w * .16 * k ** 1.6, h - h * .96 * k) for k in np.linspace(1, 0, 40)]
+        cv2.fillPoly(m, [np.int32(outer + inner)], 1.0, cv2.LINE_AA)
+    rgb = paper(h, w, col, 33, 0.06, 0.2) * np.linspace(0.65, 1.2, h, dtype=np.float32)[::-1, None, None]
+    return rgba(np.clip(rgb, 0, 1), m)
+
+
+def cash_bundle(w=300, h=150, seed=0):
+    b = bill(w, h, seed)
+    out = np.zeros((h + 24, w + 10, 4), np.float32)
+    for i in range(4):
+        paste(out, b * np.float32([.82 + .06 * i, .82 + .06 * i, .82 + .06 * i, 1]), 2 + (i % 2) * 4, 24 - i * 7)
+    bx = int(w * .42); out[:, bx:bx + int(w * .16), :3] = paper(out.shape[0], int(w * .16), YEL * .95, seed + 3, .04, .1)
+    out[:, bx:bx + int(w * .16), 3] = np.maximum(out[:, bx:bx + int(w * .16), 3], (out[:, bx - 1:bx, 3] > 0.5).astype(np.float32))
+    return out
+
+
+def brick(w=260, h=170, seed=0):
+    rgb = paper(h, w, np.array([.93, .91, .86], np.float32), seed, 0.05, 0.14)
+    r = np.random.default_rng(seed)
+    for i in range(5):
+        y = int(r.uniform(.1, .9) * h); cv2.line(rgb, (0, y), (w, y + int(r.integers(-20, 20))), (.75, .70, .52), int(r.integers(10, 22)))
+    for i in range(3):
+        x = int(r.uniform(.15, .85) * w); cv2.line(rgb, (x, 0), (x + int(r.integers(-25, 25)), h), (.75, .70, .52), int(r.integers(10, 20)))
+    cv2.rectangle(rgb, (3, 3), (w - 4, h - 4), (.55, .52, .45), 3)
+    return rgba(rgb, torn(h, w, 3, 1, seed + 2))
+
+
+def mountains(w=2600, h=700, seed=0, col=None, amp=0.55, cacti=6):
+    """Jagged desert ridge (amp = fraction of height) with saguaro cacti on the crest."""
+    col = np.array([.45, .30, .22], np.float32) if col is None else col
+    xs = np.arange(w, dtype=np.float32)
+    n = fbm(1, w, 4, 4, seed)[0]; n = (n - n.min()) / (n.max() - n.min() + 1e-6)
+    top = h * (1 - amp * (0.35 + 0.65 * n)) + fbm(1, w, 90, 2, seed + 1)[0] * 14
+    yy = np.arange(h, dtype=np.float32)[:, None]
+    a = np.clip((yy - top[None, :]) / 1.5, 0, 1)
+    rgb = paper(h, w, col, seed + 2, 0.05, 0.22) * (0.8 + 0.3 * np.clip((yy - top[None, :]) / 300, 0, 1))[..., None]
+    r = np.random.default_rng(seed); c = (.12, .30, .17)
+    for i in range(cacti):
+        x = int(r.uniform(.05, .95) * w); y = int(top[x]) + 25; sc = r.uniform(.6, 1.2); cw, ch = int(28 * sc), int(170 * sc)
+        rects = [(x - cw // 2, y - ch, x + cw // 2, y + 30)]
+        for sg in (-1, 1):
+            ax = x + sg * int(48 * sc); ay = y - int(ch * r.uniform(.35, .6))
+            rects += [(min(x, ax), ay, max(x, ax), ay + int(22 * sc)), (ax - int(12 * sc), ay - int(70 * sc), ax + int(12 * sc), ay + int(22 * sc))]
+        for x0, y0, x1, y1 in rects:
+            cv2.rectangle(rgb, (x0, y0), (x1, y1), c, -1); cv2.rectangle(a, (x0, y0), (x1, y1), 1.0, -1)
+    return rgba(rgb, a.astype(np.float32))
+
+
+def wanted(photo_spr, w=520, h=720, seed=0, title='WANTED'):
+    rgb = paper(h, w, np.array([.90, .84, .68], np.float32), seed, 0.05, 0.2)
+    t = text_sprite(title, 160, INK, pad=4, squeeze=.86, distress=.35, seed=seed)
+    k = w * .84 / t.shape[1]; t = cv2.resize(t, None, fx=k, fy=k, interpolation=cv2.INTER_AREA); th, tw = t.shape[:2]
+    x, y = (w - tw) // 2, int(h * .04); a = t[..., 3:4]; rgb[y:y + th, x:x + tw] = rgb[y:y + th, x:x + tw] * (1 - a) + t[..., :3] * a
+    p = photo_spr; k = (w * .78) / p.shape[1]; p = cv2.resize(p, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)[:int(h * .66)]
+    ph, pw = p.shape[:2]; x, y = (w - pw) // 2, y + th + 10; a = p[..., 3:4]
+    rgb[y:y + ph, x:x + pw] = rgb[y:y + ph, x:x + pw] * (1 - a) + p[..., :3] * a
+    for i in range(3):
+        yy = int(h * .9) + i * 14
+        if yy < h - 10: cv2.line(rgb, (int(w * .12), yy), (int(w * .88), yy), tuple(float(v) for v in INK * 1.5), 5)
+    return rgba(rgb, torn(h, w, 7, 3, seed + 1))

@@ -7,3 +7,4 @@ out/preview_*
 *.sfx.wav
 __pycache__/
 out/nvspy/
+out/chapo_sample/
