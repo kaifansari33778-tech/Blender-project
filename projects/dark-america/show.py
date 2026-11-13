@@ -147,7 +147,7 @@ S_GUAT = dict(t=71.3, world=world((.62, .55, .40), (.32, .55, .72), (.96, .86, .
 
 # ------------------------------------------------------------------ 7. San Francisco, 1950 (79.8 - 94.1)
 BRIDGE = K.bridge(); SHIP = K.ship(); HILLS = K.hills(); BED = K.bed(); BED_E = K.bed(occupied=False, sheet=(.25, .25, .27)); PUFFS = [K.puff(i) for i in range(5)]
-DOCK = K.cut([('p', [(0, 0), (1, 0), (1, 1), (0, 1)])], 1200, 700, (.66, .60, .48), 9)
+DOCK = K.cut([('p', [(0, 0), (1, 0), (1, 1), (0, 1)])], 1200, 700, (.36, .34, .32), 9)
 ts = T('sprayed'); tw = T('weeks'); te = T('eleven')
 def ship_fn(t, cam):
     if t > tw + .2: return []
@@ -158,14 +158,14 @@ def ship_fn(t, cam):
         k = 1 - math.exp(-dt * .5); sx = lerp(-9, 3, seg(t0, 79.8, tw))
         out.append(Card(PUFFS[i % 5], lerp(sx, r.uniform(-18, 18), k), lerp(17, r.uniform(26, 52), k), 2.5 + 6 * k, y=lerp(2.5, r.uniform(3, 11), k), shadow=0, alpha=.75 * (1 - seg(t, tw - .5, tw + .2)), blur=2))
     return out
-_beds = [(-3.25 + i * 1.3, 10.4) for i in range(6)] + [(-2.6 + i * 1.3, 9.0) for i in range(5)]
+_beds = [(-2.75 + i * 1.1, 9.4) for i in range(6)] + [(-2.2 + i * 1.1, 8.0) for i in range(5)]
 S_SF = dict(t=79.8, world=world(None, (.48, .58, .68), (.94, .90, .82), (.86, .86, .84), fog_d=48, tile=14.0, gtex=K.water_tex()), fns=[ship_fn], items=
     [I(HILLS, 0, 70, 170, sh=0, blur=1.2), I(BRIDGE, -6, 46, 66, sh=0, blur=.8)] + clouds(5, .85) + [I(art3d.bird(), -6 + i * 2.0, 26, 1.2, y=12 + math.sin(i * 2.0), sh=0, fog=False, drift=(1.6, 0, 0)) for i in range(6)] +
-    [I(DOCK, 0, 3.5, 13, flat=True, t=tw - .1, a='fade', sh=0), I(HOSP, 0, 14.5, 13, t=tw)] + [I(BED, x, z, 1.15, t=te + i * .11) for i, (x, z) in enumerate(_beds) if i != 8] +
-    [I(BED, _beds[8][0], _beds[8][1], 1.05, t=te + 8 * .11, out=T('died', 3) - .15), I(BED_E, _beds[8][0], _beds[8][1], 1.05, t=T('died', 3) + .1), I(NURSE, -3.6, 9.6, pw(NURSE, 1.7), t=T('hospital'), bob=.01), I(DOC, 3.6, 9.6, pw(DOC, 1.8), t=T('hospital') + .1, bob=.01),
+    [I(DOCK, 0, 3.6, 18, flat=True, t=tw - .1, a='fade', sh=0), I(HOSP, 0, 14.5, 13, t=tw)] + [I(BED, x, z, 1.04, t=te + i * .11) for i, (x, z) in enumerate(_beds) if i != 8] +
+    [I(BED, _beds[8][0], _beds[8][1], 1.04, t=te + 8 * .11, out=T('died', 3) - .15), I(BED_E, _beds[8][0], _beds[8][1], 1.04, t=T('died', 3) + .1), I(NURSE, -3.6, 9.6, pw(NURSE, 1.7), t=T('hospital'), bob=.01), I(DOC, 3.6, 9.6, pw(DOC, 1.8), t=T('hospital') + .1, bob=.01),
      Lb('1950 · SAN FRANCISCO', 0, 5.9, 7.3, 5.2, T('fifty', 2), out=84.6), Lb('THE NAVY SPRAYED BACTERIA', 0, 0.3, 6.6, 5.4, ts, out=87.9), Lb('A SECRET GERM-WARFARE TEST', 0, 5.9, 7.3, 5.4, T('biological'), WHITE, out=87.9),
      Lb('WEEKS LATER', 0, 5.6, 7.3, 3.2, tw + .3, WHITE, a='pop'), Lb('11 PATIENTS', 0, 4.7, 7.3, 3.6, te, out=92.6), Lb('ONE RARE INFECTION', 0, 0.1, 5.9, 4.4, T('rare'), out=92.6), Lb('ONE OF THEM DIED', 0, 0.1, 5.9, 4.4, T('died', 3))],
-    cam=[(79.8, 0, 3.0, -6, 0, -.02), (84.2, 0, 2.5, -.5, 0, .04), (87.7, 0, 3.4, 2.5, 0, .0), (88.6, 0, 2.3, .4, 0, .09), (94.1, 0, 1.85, 3.0, 0, .09)])
+    cam=[(79.8, 0, 3.0, -6, 0, -.02), (84.2, 0, 2.5, -.5, 0, .04), (87.7, 0, 3.4, 2.5, 0, .0), (88.6, 0, 3.6, .6, 0, -.10), (94.1, 0, 3.3, 2.6, 0, -.16)])
 
 # ------------------------------------------------------------------ 8. MKUltra (94.1 - 104.2)
 SEAL = K.cia_seal(); CAB = K.cabinet(); SUBJ = K.chair_subject(); FIRE = K.flames(); TRIP = art.rays(1400, 16, np.array([.85, .25, .75], np.float32), .8); TRIP2 = art.rays(1400, 11, np.array([.95, .85, .2], np.float32), .7)

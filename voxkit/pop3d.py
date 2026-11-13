@@ -82,7 +82,7 @@ class World:
             sp, Z = cam.project(q)
             if Z.min() < 0.25: continue
             info.append((float(Z.mean()), c, sp, q))
-        info.sort(key=lambda a: -a[0])
+        info.sort(key=lambda a: -(a[0] + (1000.0 if a[1].tilt > 1.4 else 0.0)))      # cards lying flat on the ground are drawn first
         # ---- cast shadows on the ground
         shl = np.zeros((H, W), np.float32)
         for zc, c, sp, q in info:
