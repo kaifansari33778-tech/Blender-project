@@ -50,3 +50,9 @@ faint scribble for strokes, low drone + heartbeat. Voice is the star; SFX gains 
 4. Copy `projects/nvidia-spy/show.py` to the new project, replace assets and the `SHOTS` list.
 5. `python3 show.py stills <dir> t1,t2,...` to check every shot, then `render <outdir>` (10 s segments,
    resumable), `mux <outdir> <out.mp4>`, and compress with x264 crf 27 (keeps the file under ~75 MB).
+
+## Script rule: open with the actual content
+
+Every script starts with its first real content line (the first fact or story beat), never with a generic teaser
+such as "here are seven things you won't believe". The "Give me sixty seconds, and I'll show you ..." line comes
+right after that first beat (for list videos: "That's one. Give me sixty seconds, and I'll show you six more.").
