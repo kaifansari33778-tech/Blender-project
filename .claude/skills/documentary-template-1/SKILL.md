@@ -51,12 +51,9 @@ faint scribble for strokes, low drone + heartbeat. Voice is the star; SFX gains 
 5. `python3 show.py stills <dir> t1,t2,...` to check every shot, then `render <outdir>` (10 s segments,
    resumable), `mux <outdir> <out.mp4>`, and compress with x264 crf 27 (keeps the file under ~75 MB).
 
-## Script rule: cold-open with a micro-story
+## Script rule: open with a "did you know" shock fact
 
-Every script opens straight inside the first story, never with a generic teaser. The first 4-6 short sentences are a
-tiny scene: an ordinary person, an ordinary moment, then something is wrong, and it escalates beat by beat
-("He runs to the doctor. But the doctor has it too. So does the priest. So does the woman next door."). Then the
-reveal names the event and gives the hard number. Only after that comes the signature line
-(for list videos: "That's one. Give me sixty seconds, and I'll show you six more.").
-The scene must be historically true to the event (use eyewitness accounts); if it is a composite, it must not name
-or invent a specific real individual.
+Every script opens with one shocking, verified fact from the first story, asked as a question:
+"Did you know that in just five years, one disease killed up to half of everyone in Europe?"
+Then one line naming it, then the signature line (for list videos: "That's one. Give me sixty seconds,
+and I'll show you six more."). No made-up scenes, no generic teasers.
