@@ -51,8 +51,12 @@ faint scribble for strokes, low drone + heartbeat. Voice is the star; SFX gains 
 5. `python3 show.py stills <dir> t1,t2,...` to check every shot, then `render <outdir>` (10 s segments,
    resumable), `mux <outdir> <out.mp4>`, and compress with x264 crf 27 (keeps the file under ~75 MB).
 
-## Script rule: open with the actual content
+## Script rule: cold-open with a micro-story
 
-Every script starts with its first real content line (the first fact or story beat), never with a generic teaser
-such as "here are seven things you won't believe". The "Give me sixty seconds, and I'll show you ..." line comes
-right after that first beat (for list videos: "That's one. Give me sixty seconds, and I'll show you six more.").
+Every script opens straight inside the first story, never with a generic teaser. The first 4-6 short sentences are a
+tiny scene: an ordinary person, an ordinary moment, then something is wrong, and it escalates beat by beat
+("He runs to the doctor. But the doctor has it too. So does the priest. So does the woman next door."). Then the
+reveal names the event and gives the hard number. Only after that comes the signature line
+(for list videos: "That's one. Give me sixty seconds, and I'll show you six more.").
+The scene must be historically true to the event (use eyewitness accounts); if it is a composite, it must not name
+or invent a specific real individual.
