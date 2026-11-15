@@ -32,7 +32,7 @@ class Card:
 
     def corners(s):
         r = np.array([math.cos(s.yaw), 0, math.sin(s.yaw)]) * s.w / 2
-        u = np.array([-math.sin(s.yaw) * math.sin(s.tilt) * 0, math.cos(s.tilt), math.sin(s.tilt)]) * s.h
+        u = np.array([-math.sin(s.yaw) * math.sin(s.tilt), math.cos(s.tilt), math.cos(s.yaw) * math.sin(s.tilt)]) * s.h      # leans back along the card's own normal
         p = np.array([s.x, s.y, s.z])
         return np.array([p - r + u, p + r + u, p + r, p - r])          # TL, TR, BR, BL
 
@@ -56,7 +56,12 @@ class World:
     def draw_ground(s, img, cam):
         n, F, Lt = 0.9, 160.0, 90.0
         cy, sy = math.cos(cam.yaw), math.sin(cam.yaw)
-        loc = [(-Lt, F), (Lt, F), (Lt * 0.03, n), (-Lt * 0.03, n)]
+        hf = math.atan(H / 2 / cam.f); ab = min(-cam.pitch + hf, 2.6); at = -cam.pitch - hf; far = True; wn = Lt * 0.03   # crane shots: fit the ground quad to what the lens sees
+        if cam.y > 3 and ab > 0.05:
+            d = cam.y / math.tan(ab); n = d * (0.8 if d > 0 else 1.25) - 0.5; wn = max(wn, math.hypot(cam.y, n) * W / 2 / cam.f * 1.6 + 0.5)
+            if at > 0.06 and cam.y / math.tan(at) * 1.25 < F: F = cam.y / math.tan(at) * 1.25; far = False
+            Lt = max(math.hypot(cam.y, F) * W / 2 / cam.f * 1.6, Lt if far else 0)
+        loc = [(-Lt, F), (Lt, F), (wn, n), (-wn, n)]
         wp = np.array([[cam.x + lx * cy + lz * sy, 0, cam.z - lx * sy + lz * cy] for lx, lz in loc])
         sp, Z = cam.project(wp)
         if Z.min() < 0.05: return
@@ -68,6 +73,7 @@ class World:
         hy = sp[0, 1]                                                        # horizon row: haze the far ground into the fog colour
         yy = np.arange(H, dtype=np.float32)[:, None]
         haze = np.clip(1 - (yy - hy) / (H * 0.16), 0, 1) ** 1.5
+        if not far: haze = haze * 0
         g = g * (1 - haze[..., None]) + s.fog * haze[..., None]
         img[:] = img * (1 - m[..., None]) + g * m[..., None]
 
