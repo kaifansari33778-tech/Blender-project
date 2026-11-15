@@ -125,7 +125,7 @@ def scene2(t, cam):
         if gk > 0: C.append(Card(PUFFS[i % 5], x, z, r.uniform(9, 15), y=r.uniform(-12, -3) + .5 * math.sin(t + i), shadow=0, alpha=.26 * min(1, gk * 6), blur=None if z > 16 else 3.0, fog=False))
     C.append(Card(ROOFS, 1, 15, 46, y=-13.5, shadow=0, fog=False))
     k = eout(seg(t, T('hazaaron') - .15, T('hazaaron') + .9), 3)
-    if k > 0: C.append(Card(STATUE, 1.5 + .15 * math.sin(t * .6), 8.0, 6.4, y=-1.4 - (1 - k) * 12, yaw=-.12 + .04 * math.sin(t * .5), shadow=0, fog=False))
+    if k > 0: C.append(Card(STATUE, cam.x * .8 + 1.3 + .15 * math.sin(t * .6), 8.0, 6.4, y=-1.4 - (1 - k) * 12, yaw=-.12 + .04 * math.sin(t * .5), shadow=0, fog=False))
     typed(C, cam, t, 9, 23); hl(C, cam, t, 'ZEHREELI GAS', T('zehreeli'), T('neend') - .05, .80, .66, np.float32(GASC)); hl(C, cam, t, 'NEEND MEIN HI', T('neend'), C2 + .3, .80, .66, YEL)
     return C
 
