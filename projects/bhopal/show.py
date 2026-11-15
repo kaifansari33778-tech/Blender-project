@@ -10,7 +10,7 @@ from voxkit.cine import look, pin, tint, hang, pi
 from voxkit.collage import *
 
 _sp = importlib.util.spec_from_file_location('s3', os.path.join(HERE, 'sample3.py')); S3 = importlib.util.module_from_spec(_sp); _sp.loader.exec_module(S3); S = S3.S
-T = S.T; RAWW = S.WORDS; load = S.load; WD = S.WD; DUR = 102.35
+T = S.T; RAWW = S.WORDS; load = S.load; WD = S.WD; DUR = 106.27
 NUMW = {('unnees', 'sau', 'chauraasi'): '1984', ('do', 'december'): '2 December', ('saath', 'second'): '60 second', ('teen', 'hazaar', 'aath', 'sau'): '3,800', ('aath', 'hazaar'): '8,000', ('paanch', 'lakh'): '5 lakh',
         ('do', 'hazaar', 'chaudah'): '2014', ('unnees', 'sau', 'navaasi'): '1989', ('chaar', 'sau', 'sattar', 'million', 'dollar'): '470 million dollar', ('chaalees', 'ton'): '40 ton'}
 WORDS = merge_words(RAWW, NUMW)
@@ -77,7 +77,33 @@ def _palm(seed=0, w=600, h=1100):
 def _disc(col, s=500): d = np.zeros((s, s, 4), np.float32); cv2.circle(d, (s // 2, s // 2), s // 2 - 4, tuple(col) + (1.0,), -1, cv2.LINE_AA); return d
 STREAM = _stream(); THERMO = [_thermo(i / 7) for i in range(8)]; SW_ON, SW_OFF = _switch(True), _switch(False); PLANE = _plane(); PLANEF = PLANE[:, ::-1].copy(); PALMS = [_palm(i) for i in range(3)]; SUN = _disc((1.0, .93, .70))
 SKULL = K.skull(); BEDS = K.bed(); RUN = [tint(K.fig((.1, .1, .12), (.08, .08, .1), i, None, seed=720 + i, skirt=i % 2 == 1), (.5, .55, .7)) for i in range(5)]; CUFF = V7.shackle(); BARS = art3d.bars(); GRAVE = K.grave(); BILLS = [art.bill(seed=i) for i in range(4)]
-FLAGUS = art.flag_us(); BOSS = S.BOSS; COURT = S.COURT; CANDLE = V7.candle()
+def _anderson(w=700, h=1500):
+    """The artist's ink portrait of Warren Anderson (Wikimedia Commons, Khaydock, CC BY-SA 3.0) as a paper cut-out on a plain suit body."""
+    c = cv2.imread(os.path.join(HERE, 'photos', 'anderson_cut.png'), cv2.IMREAD_UNCHANGED)[:535]; c = np.dstack([c[..., 2::-1], c[..., 3]]).astype(np.float32) / 255
+    k = w / c.shape[1]; c = cv2.resize(c, (w, int(c.shape[0] * k))); bh = c.shape[0]; s = np.zeros((h, w, 4), np.float32); ink = (.08, .08, .08, 1.0)
+    body = np.int32([(w * .07, bh - 70), (w * .93, bh - 40), (w * .99, h), (w * .01, h)]); cv2.fillPoly(s, [body], (.95, .94, .90, 1.0), cv2.LINE_AA); cv2.polylines(s, [body], True, ink, 7, cv2.LINE_AA)
+    cv2.line(s, (int(w * .345), bh - 20), (int(w * .33), h), ink, 6, cv2.LINE_AA); cv2.fillPoly(s, [np.int32([(w * .31, bh - 30), (w * .38, bh - 30), (w * .37, bh + 260), (w * .345, bh + 310), (w * .32, bh + 260)])], ink, cv2.LINE_AA)
+    for i in range(4): cv2.circle(s, (int(w * .40), bh + 120 + i * 150), 9, ink, -1, cv2.LINE_AA)
+    a = c[..., 3:4]; s[:bh] = s[:bh] * (1 - a) + c * a; s[..., :3] *= (0.93 + 0.1 * fbm(h, w, 8, 3, 5))[..., None]
+    e = cv2.dilate(s[..., 3], np.ones((11, 11))) - s[..., 3]; s[..., :3] = s[..., :3] * (1 - e[..., None]) + CREAM * e[..., None]; s[..., 3] = np.maximum(s[..., 3], np.clip(e * 2, 0, 1)); return s
+FLAGUS = art.flag_us(); BOSS = _anderson(); S.BOSS = BOSS; COURT = S.COURT; CANDLE = V7.candle()
+_AR = {}
+def arrow(k, flip=False, col=(.95, .92, .84)):
+    """A hand-drawn curved arrow (pointing down-right, or down-left when flipped) that draws itself as k goes 0..1."""
+    q = (int(k * 12), flip, col)
+    if q not in _AR:
+        s = np.zeros((520, 620, 4), np.float32); r = np.random.default_rng(3); P = [(60 + 470 * u + 6 * r.normal(), 70 + 360 * u ** 2.2 + 30 * math.sin(u * 3.1) + 4 * r.normal()) for u in np.linspace(0, 1, 40)]
+        n = max(2, int(len(P) * min(1, k / .8)))
+        for off in ((0, 0), (3, 2)): cv2.polylines(s, [np.int32([(x + off[0], y + off[1]) for x, y in P[:n]])], False, tuple(col) + (1.0,), 13, cv2.LINE_AA)
+        if k > .8:
+            (x1, y1), (x0, y0) = P[-1], P[-4]; a = math.atan2(y1 - y0, x1 - x0); L = 95 * min(1, (k - .8) / .2)
+            for da in (2.55, -2.55): cv2.line(s, (int(x1), int(y1)), (int(x1 + L * math.cos(a + da)), int(y1 + L * math.sin(a + da))), tuple(col) + (1.0,), 14, cv2.LINE_AA)
+        _AR[q] = s[:, ::-1].copy() if flip else s
+    return _AR[q]
+def point(C, t, t0, t1, x, y, z, w, flip=False, col=(.95, .92, .84)):
+    """Draw an arrow in the scene whose tip lands at world point (x, y, z)."""
+    if t < t0 or t > t1: return
+    k = seg(t, t0, t0 + .45); a = 1 - seg(t, t1 - .25, t1); tipx = (530 / 620 - .5) * w * (-1 if flip else 1); C.append(Card(arrow(k, flip, col), x - tipx + .05 * math.sin(t * 7), z, w, y=y - w * 520 / 620 * (1 - 430 / 520), shadow=0, fog=False, alpha=a, blur=0))
 BT = lambda txt, col=(.90, .88, .80), size=380, seed=5: big_text(txt, col, size, seed)
 T_UC = BT('UNION CARBIDE', (.93, .80, .16), 300); T_40 = BT('40 TON', (.93, .80, .16)); T_HAWA = BT('BHAARI', (.90, .88, .80)); T_3800 = BT('3,800', (.86, .30, .12)); T_8000 = BT('8,000', (.86, .30, .12)); T_5L = BT('5 LAKH+', (.86, .30, .12))
 T_2014 = BT('2014'); T_470 = BT('$470M', (.93, .80, .16)); T_FOLLOW = BT('FOLLOW', (.93, .80, .16)); T_COOL = BT('COOLING', (.70, .86, 1.0)); T_4DIN = BT('4 DIN BAAD')
@@ -87,11 +113,13 @@ T_2014 = BT('2014'); T_470 = BT('$470M', (.93, .80, .16)); T_FOLLOW = BT('FOLLOW
 def sc6(t, cam, a, b):                                   # "aadhi raat se thodi der pehle, Union Carbide ki pesticide factory mein"
     C = [Card(SKYN, 0, 75, 130, y=-52, shadow=0, blur=1.0, fog=False)]; pop(C, S3.CLOCK, t, a + .25, 22, 10, 44, -.5, T('union') - .2); pop(C, T_UC, t, T('union'), 31, 20, 46)
     C += [Card(FN, 0, 30, 58, y=-14.5, shadow=0, fog=False), Card(GN, -1, 15, 44, y=-9.5, shadow=0, fog=False)]
+    point(C, t, T('pesticide'), b, 1.5, 9.0, 27, 10, col=(.93, .80, .16))
     hl(C, cam, t, 'AADHI RAAT SE PEHLE', T('aadhi') + .1, T('union') - .1, .80, .86); hl(C, cam, t, 'PESTICIDE FACTORY', T('pesticide'), b + .3, .80, .80); return C
 def sc_tank(t, cam, a, b):                               # "ek tank ke andar paani chala jaata hai"
     C = [Card(TKBG, 0, 34, 66, y=-15, shadow=0, blur=2.0, fog=False), Card(TKFG, 0, 28, 56, y=-12.5, shadow=0, fog=False)]
     k = eout(seg(t, T('paani') - .2, T('paani') + .9), 2)
     if k > 0: C.append(Card(STREAM[:max(8, int(1200 * k))], 5.4, 27.5, 2.2, y=24 - 16.5 * k, shadow=0, fog=False))
+    point(C, t, T('tank') - .1, T('paani') + .9, .5, 1.0, 20, 8, col=(.93, .80, .16))
     hl(C, cam, t, 'TANK MEIN PAANI', T('paani') - .1, b + .3, .80, .74, BLUE); return C
 def sc_mic(t, cam, a, b):                                # "us tank mein lagbhag 40 ton methyl isocyanate tha, duniya ke sabse khatarnaak chemicals mein se ek"
     C = [Card(TKBGD, 0, 34, 66, y=-15, shadow=0, blur=2.2, fog=False)]; pop(C, T_40, t, T('chaalees'), 21, 19, 31, t1=T('duniya') - .2, blur=None)
@@ -144,6 +172,7 @@ def sc_arrest(t, cam, a, b):                             # "chaar din baad, Unio
     pk = seg(t, T('india') - .5, T('aur', 5) + .3); C.append(Card(PLANE, lerp(-40, 6, eout(pk, 2)), 38, 20, y=lerp(24, 8, eout(pk, 2)), shadow=0, fog=False)) if pk > 0 else None
     rise(C, BOSS, t, T('boss') - .25, 0, 22, 12, -9.5); C.append(Card(COURT, 0, 30, 40, y=-22, shadow=0, fog=False, alpha=0))
     hang(C, CUFF, 1.2, 11, 3.2, 1.0, t, T('giraftaar') - .15, ph=.9, swing=.5, L=16)
+    point(C, t, T('warren') - .05, T('aur', 5) + .2, 1.3, 8.6, 18, 7, flip=True, col=(.93, .80, .16))
     hl(C, cam, t, 'AMERICAN BOSS', T('american'), T('warren') - .05, .80, .66); hl(C, cam, t, 'WARREN ANDERSON', T('warren'), T('aur', 5), .80, .80); hl(C, cam, t, 'GIRAFTAAR', T('giraftaar'), b + .3, .80, .56, RED); return C
 def sc_bail(t, cam, a, b):                               # "kuch hi ghanton mein use bail mil jaati hai, use state se bahar bhej diya jaata hai, aur woh kabhi waapas nahi aata"
     C = [Card(SKYB, 0, 75, 130, y=-60, shadow=0, blur=1.5, fog=False), Card(COURT, 0, 34, 44, y=-10, shadow=0, fog=False)]
@@ -169,7 +198,7 @@ def sc_end(t, cam, a, b):                                # "aisi aur kahaniyon k
     C = [Card(SKYN, 0, 75, 130, y=-52, shadow=0, blur=1.0, fog=False)]; pop(C, T_FOLLOW, t, T('follow'), 40, 18, 46); C += [Card(FN, 0, 30, 58, y=-14.5, shadow=0, fog=False), Card(GN, -1, 15, 44, y=-9.5, shadow=0, fog=False)]
     C.append(Card(STAT, cam.x * .7 + 1.0, 12, 8.5, y=-6.0, shadow=0, fog=False))
     for i in range(16): r = np.random.default_rng(770 + i); C.append(Card(CANDLE, r.uniform(-5, 5), 7 + r.uniform(0, 3), .26 * (1 + .06 * math.sin(t * 11 + i)), y=-1.4 - r.uniform(0, .8), shadow=0, fog=False))
-    hl(C, cam, t, 'FOLLOW KARO', T('follow'), DUR, .80, .66); return C
+    hl(C, cam, t, 'AISI SACHCHI KAHANIYAN', T('aisi'), T('aise') - .05, .80, .88); hl(C, cam, t, 'AISE AUR FACTS', T('aise'), T('follow') - .05, .80, .70); hl(C, cam, t, 'FOLLOW KAREIN', T('follow'), DUR, .80, .70); return C
 
 
 E = 1e-3
