@@ -78,14 +78,13 @@ def _disc(col, s=500): d = np.zeros((s, s, 4), np.float32); cv2.circle(d, (s // 
 STREAM = _stream(); THERMO = [_thermo(i / 7) for i in range(8)]; SW_ON, SW_OFF = _switch(True), _switch(False); PLANE = _plane(); PLANEF = PLANE[:, ::-1].copy(); PALMS = [_palm(i) for i in range(3)]; SUN = _disc((1.0, .93, .70))
 SKULL = K.skull(); BEDS = K.bed(); RUN = [tint(K.fig((.1, .1, .12), (.08, .08, .1), i, None, seed=720 + i, skirt=i % 2 == 1), (.5, .55, .7)) for i in range(5)]; CUFF = V7.shackle(); BARS = art3d.bars(); GRAVE = K.grave(); BILLS = [art.bill(seed=i) for i in range(4)]
 def _anderson(w=700, h=1500):
-    """The artist's ink portrait of Warren Anderson (Wikimedia Commons, Khaydock, CC BY-SA 3.0) as a paper cut-out on a plain suit body."""
-    c = cv2.imread(os.path.join(HERE, 'photos', 'anderson_cut.png'), cv2.IMREAD_UNCHANGED)[:535]; c = np.dstack([c[..., 2::-1], c[..., 3]]).astype(np.float32) / 255
-    k = w / c.shape[1]; c = cv2.resize(c, (w, int(c.shape[0] * k))); bh = c.shape[0]; s = np.zeros((h, w, 4), np.float32); ink = (.08, .08, .08, 1.0)
-    body = np.int32([(w * .07, bh - 70), (w * .93, bh - 40), (w * .99, h), (w * .01, h)]); cv2.fillPoly(s, [body], (.95, .94, .90, 1.0), cv2.LINE_AA); cv2.polylines(s, [body], True, ink, 7, cv2.LINE_AA)
-    cv2.line(s, (int(w * .345), bh - 20), (int(w * .33), h), ink, 6, cv2.LINE_AA); cv2.fillPoly(s, [np.int32([(w * .31, bh - 30), (w * .38, bh - 30), (w * .37, bh + 260), (w * .345, bh + 310), (w * .32, bh + 260)])], ink, cv2.LINE_AA)
-    for i in range(4): cv2.circle(s, (int(w * .40), bh + 120 + i * 150), 9, ink, -1, cv2.LINE_AA)
+    """The real portrait of Warren Anderson (English Wikipedia, non-free / fair use) as a halftone cut-out, continued into a dark suit."""
+    c = cv2.imread(os.path.join(HERE, 'photos', 'anderson_photo_cut.png'), cv2.IMREAD_UNCHANGED); c = np.dstack([c[..., 2::-1], c[..., 3]]).astype(np.float32) / 255
+    k = w / c.shape[1]; c = cv2.resize(c, (w, int(c.shape[0] * k)), interpolation=cv2.INTER_CUBIC); bh = c.shape[0]; lum = c[..., :3].mean(2)
+    c[..., :3] = np.clip((lum[..., None] * np.float32([1.04, .98, .90]) - .5) * 1.2 + .5, 0, 1) * (1 - .16 * halftone(lum, 4.0))[..., None]
+    s = np.zeros((h, w, 4), np.float32); suit = (.085, .09, .10, 1.0); cv2.fillPoly(s, [np.int32([(w * .16, bh - 60), (w * .99, bh - 200), (w, h), (w * .06, h)])], suit, cv2.LINE_AA)
     a = c[..., 3:4]; s[:bh] = s[:bh] * (1 - a) + c * a; s[..., :3] *= (0.93 + 0.1 * fbm(h, w, 8, 3, 5))[..., None]
-    e = cv2.dilate(s[..., 3], np.ones((11, 11))) - s[..., 3]; s[..., :3] = s[..., :3] * (1 - e[..., None]) + CREAM * e[..., None]; s[..., 3] = np.maximum(s[..., 3], np.clip(e * 2, 0, 1)); return s
+    e = cv2.dilate(s[..., 3], np.ones((13, 13))) - s[..., 3]; s[..., :3] = s[..., :3] * (1 - e[..., None]) + CREAM * e[..., None]; s[..., 3] = np.maximum(s[..., 3], np.clip(e * 2, 0, 1)); return s
 FLAGUS = art.flag_us(); BOSS = _anderson(); S.BOSS = BOSS; COURT = S.COURT; CANDLE = V7.candle()
 _AR = {}
 def arrow(k, flip=False, col=(.95, .92, .84)):
@@ -116,19 +115,19 @@ def sc6(t, cam, a, b):                                   # "aadhi raat se thodi 
     point(C, t, T('pesticide'), b, 1.5, 9.0, 27, 10, col=(.93, .80, .16))
     hl(C, cam, t, 'AADHI RAAT SE PEHLE', T('aadhi') + .1, T('union') - .1, .80, .86); hl(C, cam, t, 'PESTICIDE FACTORY', T('pesticide'), b + .3, .80, .80); return C
 def sc_tank(t, cam, a, b):                               # "ek tank ke andar paani chala jaata hai"
-    C = [Card(TKBG, 0, 34, 66, y=-15, shadow=0, blur=2.0, fog=False), Card(TKFG, 0, 28, 56, y=-12.5, shadow=0, fog=False)]
+    C = [Card(TKBG, 0, 34, 84, y=-25, shadow=0, blur=2.0, fog=False), Card(TKFG, 0, 28, 56, y=-12.5, shadow=0, fog=False)]
     k = eout(seg(t, T('paani') - .2, T('paani') + .9), 2)
     if k > 0: C.append(Card(STREAM[:max(8, int(1200 * k))], 5.4, 27.5, 2.2, y=24 - 16.5 * k, shadow=0, fog=False))
     point(C, t, T('tank') - .1, T('paani') + .9, .5, 1.0, 20, 8, col=(.93, .80, .16))
     hl(C, cam, t, 'TANK MEIN PAANI', T('paani') - .1, b + .3, .80, .74, BLUE); return C
 def sc_mic(t, cam, a, b):                                # "us tank mein lagbhag 40 ton methyl isocyanate tha, duniya ke sabse khatarnaak chemicals mein se ek"
-    C = [Card(TKBGD, 0, 34, 66, y=-15, shadow=0, blur=2.2, fog=False)]; pop(C, T_40, t, T('chaalees'), 21, 19, 31, t1=T('duniya') - .2, blur=None)
+    C = [Card(TKBGD, 0, 34, 84, y=-25, shadow=0, blur=2.2, fog=False)]; pop(C, T_40, t, T('chaalees'), 21, 19, 31, t1=T('duniya') - .2, blur=None)
     k = back(seg(t, T('methyl') - .15, T('methyl') + .4), 1.5)
     if k > 0: C.append(Card(MIC, .4 * math.sin(t * .7), 22, 17 * k, y=-1 + .5 * math.sin(t * 1.1), yaw=.25 * math.sin(t * .5), shadow=0, fog=False))
     rise(C, SKULL, t, T('khatarnaak') - .3, 2.6, 10, 5.2, -2.0)
     hl(C, cam, t, 'METHYL ISOCYANATE', T('methyl'), T('duniya') - .1, .80, .84, GASC); hl(C, cam, t, 'SABSE KHATARNAAK CHEMICAL', T('sabse'), b + .3, .80, .92, GASC); return C
 def sc_hot(t, cam, a, b):                                # "tank garam hone lagta hai aur gas bahar nikal jaati hai"
-    hk = seg(t, a, T('aur', 2)); C = [Card(SKYR, 0, 75, 130, y=-55, shadow=0, blur=1.2, fog=False), Card(TKBG, 0, 34, 66, y=-15, shadow=0, blur=2.0, fog=False, alpha=1 - .5 * hk), Card(TKFG, 0, 28, 56, y=-12.5, shadow=0, fog=False),
+    hk = seg(t, a, T('aur', 2)); C = [Card(SKYR, 0, 75, 130, y=-55, shadow=0, blur=1.2, fog=False), Card(TKBG, 0, 34, 84, y=-25, shadow=0, blur=2.0, fog=False, alpha=1 - .5 * hk), Card(TKFG, 0, 28, 56, y=-12.5, shadow=0, fog=False),
                                     Card(TKHOT, 0, 27.9, 56, y=-12.5, shadow=0, fog=False, alpha=hk * (.85 + .15 * math.sin(t * 9)))]
     C.append(Card(THERMO[min(7, int(hk * 8))], -3.2, 12, 1.5, y=1.5, shadow=0, fog=False, sway=.03 * hk * math.sin(t * 40)))
     gk = seg(t, T('gas', 2) - .1, b)
