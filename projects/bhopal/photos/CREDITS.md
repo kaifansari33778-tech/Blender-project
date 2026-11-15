@@ -15,3 +15,4 @@ All from Wikimedia Commons.
 - Supreme Court of India, inside buildings 01 (cropped).jpg - Pinakpani - CC BY-SA 4.0
 - Bhopal disaster plaque in Greyfriars Kirkyard, Edinburgh.jpg - Mike Shaw - CC BY-SA 4.0
 - Methyl isocyanate 3D spacefill.png - Jynto (talk) - CC0
+- Warren Anderson.jpg (English Wikipedia) - non-free, used there under fair use; copyright holder not stated
