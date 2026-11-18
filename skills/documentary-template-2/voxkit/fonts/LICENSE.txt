@@ -1,0 +1,1 @@
+InterDisplay-Black.otf is the Inter typeface by Rasmus Andersson, licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). It may be bundled and redistributed with software.

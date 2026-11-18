@@ -9,7 +9,14 @@ PAPER = np.array([226, 205, 168], np.float32) / 255
 PAPER_LT = np.array([240, 228, 200], np.float32) / 255
 ORANGE = np.array([206, 88, 12], np.float32) / 255
 INK = np.array([34, 27, 22], np.float32) / 255
-FONT_BLACK = '/usr/share/fonts/opentype/inter/InterDisplay-Black.otf'
+def _find_font():
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(here, 'fonts', 'InterDisplay-Black.otf'), '/usr/share/fonts/opentype/inter/InterDisplay-Black.otf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+              '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf', '/System/Library/Fonts/Supplemental/Arial Bold.ttf', 'C:/Windows/Fonts/arialbd.ttf'):
+        if os.path.exists(p): return p
+    raise FileNotFoundError('no bold font found - put a heavy .otf/.ttf at voxkit/fonts/InterDisplay-Black.otf')
+FONT_BLACK = _find_font()
 
 
 # ------------------------------------------------------------------ easing
