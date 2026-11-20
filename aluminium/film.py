@@ -38,7 +38,7 @@ FACT = photo('factory', tint=(1, .55, .25), s=.35, contrast=1.15, vig=.5, focus=
 WORK = cut('workers', 500, amb=(1, .6, .3), s=.5, rim=(1, .5, .12), rim_r=12, rim_k=1.0, top=1.0, bot=.55)
 WORK_F = dict(i=np.ascontiguousarray(WORK['i'][:, ::-1]), s=np.ascontiguousarray(WORK['s'][:, ::-1]))
 LUNG = cut('lungs', 600, amb=(1, .7, .5), s=.35, rim=(1, .55, .2), rim_k=.7, bot=.8)
-_bl = Image.open(f'{A}/cut/bladder.png').convert('RGBA'); _ba = np.asarray(_bl).copy(); _ba[..., 3] = (np.clip((_ba[..., 3].astype(np.float32) / 255 - .6) * 3.5, 0, 1) * 255).astype(np.uint8); Image.fromarray(_ba).save(f'{A}/cut/bladder_c.png')
+_bl = Image.open(f'{A}/cut/bladder.png').convert('RGBA'); _ba = np.asarray(_bl).copy(); _ba[..., 3] = (np.clip((_ba[..., 3].astype(np.float32) / 255 - .6) * 3.5, 0, 1) * 255).astype(np.uint8); os.path.exists(f'{A}/cut/bladder_c.png') or Image.fromarray(_ba).save(f'{A}/cut/bladder_c.png')
 BLAD = cut('bladder_c', 420, amb=(1, .7, .5), s=.35, rim=(1, .55, .2), rim_k=.7, bot=.8)
 SPOT = dark_spot(); DSMOKE = smoke_sprite(); DUST = smoke_sprite((.95, .9, .78), .8)
 SPARK = glow_sprite(14, (1.0, .6, .15))
