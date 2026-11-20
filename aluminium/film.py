@@ -35,14 +35,19 @@ SCI = framed('sci', 620, 560, (.5, .4))
 POTS = cut('pot', 560, amb=(1, .86, .5), s=.42, rim=(1, .78, .25), rim_k=.5, bot=.74)
 CR1, CR2 = cross(); TICK = tick()
 FACT = photo('factory', tint=(1, .55, .25), s=.35, contrast=1.15, vig=.5, focus=(.25, .5)); FACT_B = FACT.copy(); FACT_B[..., :3] = blur(FACT[..., :3], 16) * .75
-WORK = cut('workers', 1050, amb=(1, .6, .3), s=.5, rim=(1, .5, .12), rim_r=12, rim_k=1.0, top=1.0, bot=.55)
+WORK = cut('workers', 500, amb=(1, .6, .3), s=.5, rim=(1, .5, .12), rim_r=12, rim_k=1.0, top=1.0, bot=.55)
+WORK_F = dict(i=np.ascontiguousarray(WORK['i'][:, ::-1]), s=np.ascontiguousarray(WORK['s'][:, ::-1]))
 LUNG = cut('lungs', 600, amb=(1, .7, .5), s=.35, rim=(1, .55, .2), rim_k=.7, bot=.8)
-BLAD = cut('bladder', 420, amb=(1, .7, .5), s=.35, rim=(1, .55, .2), rim_k=.7, bot=.8)
+_bl = Image.open(f'{A}/cut/bladder.png').convert('RGBA'); _ba = np.asarray(_bl).copy(); _ba[..., 3] = (np.clip((_ba[..., 3].astype(np.float32) / 255 - .6) * 3.5, 0, 1) * 255).astype(np.uint8); Image.fromarray(_ba).save(f'{A}/cut/bladder_c.png')
+BLAD = cut('bladder_c', 420, amb=(1, .7, .5), s=.35, rim=(1, .55, .2), rim_k=.7, bot=.8)
 SPOT = dark_spot(); DSMOKE = smoke_sprite(); DUST = smoke_sprite((.95, .9, .78), .8)
 SPARK = glow_sprite(14, (1.0, .6, .15))
 _fg = photo('factory', 900, 640, tint=(1, .55, .25), s=.35, focus=(.3, .4)); _yy, _xx = np.mgrid[-1:1:640j, -1:1:900j].astype(np.float32)
 _fg[..., 3] = np.clip((1 - np.hypot(_xx, _yy)) * 3, 0, 1); _fg[..., :3] *= _fg[..., 3:4]; FGHOST = _fg
-PLATE2 = cut('plate2', 880, amb=(1, .8, .75), s=.3, rim=(.6, .12, .2), rim_k=.5, top=1.05, bot=.85, sat=1.1)
+_pl = Image.new('RGBA', (940, 940)); _d = ImageDraw.Draw(_pl); _d.ellipse([0, 0, 939, 939], fill=(232, 230, 224, 255)); _d.ellipse([14, 14, 925, 925], fill=(250, 249, 245, 255))
+_d.ellipse([120, 120, 819, 819], fill=(236, 234, 228, 255)); _d.ellipse([130, 134, 809, 813], fill=(246, 245, 240, 255))
+_f = Image.open(f'{A}/cut/plate2.png').convert('RGBA'); _f = _f.resize((640, int(640 * _f.height / _f.width)), Image.LANCZOS); _pl.alpha_composite(_f, (150, 470 - _f.height // 2))
+PLATE2 = mk(grade(pre(_pl), (1, .8, .75), .3, rim=(.6, .12, .2), rim_k=.5, top=1.05, bot=.85, sat=1.1), 30, .7)
 TEA = cut('tea', 520, amb=(1, .8, .75), s=.3, rim=(.6, .12, .2), rim_k=.5)
 FORK = cut('forkhand', 1000, amb=(1, .75, .75), s=.35, rim=(.7, .15, .25), rim_k=.6, bot=.7)
 BEAD = sphere(26, (.62, .66, .72)); LBEAD = sphere(30, (.16, .17, .2), (.55, .58, .65)); GLOW = glow_sprite(90, (1.0, .95, .7)); RGLOW = glow_sprite(120, (1.0, .15, .1))
@@ -55,7 +60,7 @@ VESSEL = photo('vessel', tint=(1, .4, .45), s=.3, vig=.4, focus=(.2, .5))
 KID = cut('kidney', 640, amb=(1, .7, .7), s=.25, rim=(.7, .15, .25), rim_k=.6, bot=.85)
 KID_W = cut('kidney', 640, amb=(.6, .5, .45), s=.9, sat=.25, top=.7, bot=.45)
 GLOM = cut('glom', 520, amb=(1, .8, .8), s=.2)
-_b, _holes = bone(); _bt = photo('bonetex', 620, 620)[..., :3]
+_b, _holes = bone(); _bt = cv2.resize(photo('bonetex', 1500, 1500, focus=(0, .5))[..., :3], (620, 620), interpolation=cv2.INTER_AREA)
 _b[..., :3] = (_bt * 1.05 * np.linspace(1.1, .8, 620, dtype=np.float32)[:, None, None]) * _b[..., 3:4]
 _ring = np.clip(_b[..., 3] - blur(np.ascontiguousarray(_b[..., 3]), 26), 0, 1)[..., None]; _b[..., :3] = _b[..., :3] * (1 - _ring * 1.6).clip(0, 1) + np.array([.93, .88, .76], np.float32) * (_ring * 1.6).clip(0, 1) * _b[..., 3:4]
 BONE = mk(grade(_b, (1, .8, .8), .25, rim=(.7, .15, .25), rim_k=.5))
@@ -75,7 +80,7 @@ POT_F = cut('pot', 620, amb=(.6, .8, 1), s=.5, rim=(.5, .75, 1), rim_k=.6, bot=.
 T_AL = mk(grade(pre(tile('Al', '13', 'ALUMINIUM')), (1, .9, .6), .25), 26, .7); T_PB = mk(grade(pre(tile('Pb', '82', 'LEAD', False)), (1, .9, .6), .12, rim=(.9, .7, .2), rim_k=.5), 26, .7)
 SCRAP = photo('scrapyard', tint=(1, .5, .3), s=.45, contrast=1.15, vig=.5, bright=.9)
 MELT = photo('melt', tint=(1, .55, .3), s=.3, contrast=1.15, vig=.5); MELT_B = MELT.copy(); MELT_B[..., :3] = blur(MELT[..., :3], 12) * .7
-ENG = cut('engine', 640, amb=(1, .6, .35), s=.4, rim=(1, .5, .15), rim_k=.8); PCB = cut('pcb', 600, amb=(1, .7, .4), s=.35, rim=(1, .5, .15), rim_k=.8)
+ENG = framed('engine', 600, 450); PCB = cut('pcb', 600, amb=(1, .7, .4), s=.35, rim=(1, .5, .15), rim_k=.8)
 LB_CAR = mk(pre(label_tag('OLD CAR PARTS'))); LB_EL = mk(pre(label_tag('OLD ELECTRONICS'))); LB_IN = mk(pre(label_tag('INDIA', (214, 30, 40), (255, 255, 255))))
 POUR = photo('pour', tint=(1, .6, .35), s=.25, contrast=1.1, vig=.5)
 CAST = cut('castpot', 760, amb=(1, .7, .45), s=.35, rim=(1, .5, .15), rim_k=.7, bot=.7)
@@ -91,17 +96,18 @@ BIN = cut('bin', 620, amb=(.5, .6, 1), s=.5, rim=(.4, .5, .9), rim_k=.5, bot=.7)
 CITY2 = photo('city', 1400, 2490, tint=(.6, .6, 1), s=.3, bright=.8, vig=.5, focus=(.5, .6))
 CHAT0 = pre(chat_screen(Image.new('RGBA', (10, 10))).resize((W, int(W * 1080 / 520)), Image.LANCZOS)); CHAT1 = pre(chat_screen(CARD_P).resize((W, int(W * 1080 / 520)), Image.LANCZOS))
 WARN = mk(pre(warn_tri(260)))
+B.SKY = photo('city', 1300, 2300, tint=(.75, .6, 1), s=.35, bright=.9, contrast=1.1, focus=(.5, .5)); B.CITY = np.zeros((4, 4, 4), np.float32)
 BUBS = [mk(pre(bubble(*a)), 14, .4) for a in (('MK', (180, 60, 140), '@maria_k', 'Aluminium, always!'), ('JS', (60, 110, 200), '@james.s', 'Stainless steel for me'), ('AL', (230, 130, 40), '@ana_l', "Grandma's cast iron"))]
 OUT_V = [cut('pot', 460, amb=(.8, 1, .85), s=.3, rim=(.25, .5, .38), bot=.72), cut('pan_coat', 480, amb=(.8, 1, .85), s=.3, rim=(.25, .5, .38), bot=.75), cut('castpot', 500, amb=(.8, 1, .85), s=.3, rim=(.25, .5, .38), bot=.72)]
 
 # ---------- scenes ----------
 def s_list(t):
     c = new(); k = ease(seg(t, 21.9, 29.6)); bg_pan(c, YEL, 750, 1200 + 20 * k, 1.0)
-    zk = ease(seg(t, 25.0, 25.65)); Z = lerp(1, 2.1, zk); dsc, dx, dy = .9, 540, 1150
+    zk = ease(seg(t, 25.0, 25.65)); Z = lerp(1, 1.7, zk); dsc, dx, dy = .9, 540, 1150
     rowy = dy + (ROW0 + ROW_AL * ROWH + ROWH / 2 - DOC_H / 2) * dsc; rowx = dx + (280 - DOC_W / 2) * dsc
-    G = Grp((rowx, rowy), (lerp(rowx, 500, zk), lerp(rowy, 1000, zk)), Z)
+    G = Grp((rowx, rowy), (lerp(rowx, 470, zk), lerp(rowy, 1240, zk)), Z)
     p = pop(t, 22.35, .45, 1.0)
-    if p > 0: x, y = G(790, 520); obj(c, SCI, x + (1 - p) * 800, y, .62 * Z, 6, rx=(1 - p) * 40, ry=-14 + sin(t * 1.3) * 4, depth=.8)
+    if p > 0: x, y = G(790, 520); obj(c, SCI, x + (1 - p) * 800, y, .62 * Z, 6, 1 - zk, rx=(1 - p) * 40, ry=-14 + sin(t * 1.3) * 4, depth=.8)
     p = pop(t, 23.0, .5, .9)
     if p > 0:
         x, y = G(dx, dy); obj(c, DOC, x, y - (1 - p) * 2000, dsc * Z, lerp(-9, -1.5, p), rx=(1 - p) * 50, depth=1.0)
@@ -114,11 +120,11 @@ def s_list(t):
             hx, hy = G(dx + (48 - DOC_W / 2) * dsc, rowy + 2)
             obj(c, MARK, hx + hp * HL.shape[1] * dsc * Z + 110, hy + 200 + (1 - mp) * 1200, 1.1, 30, depth=1.8, lift=2)
     p = pop(t, 24.0, .4)
-    if p > 0: x, y = G(420, 470); obj(c, AGENCY, x, y - (1 - p) * 900, .8 * Z, -5 + (1 - p) * 12, rx=(1 - p) * 40, ry=10, depth=1.3, lift=1.6)
+    if p > 0: x, y = G(420, 470); obj(c, AGENCY, x, y - (1 - p) * 900, .8 * Z, -5 + (1 - p) * 12, 1 - zk, rx=(1 - p) * 40, ry=10, depth=1.3, lift=1.6)
     p = pop(t, 28.45, .35)
     if p > 0:
-        obj(c, POTS, 770, 1480 + (1 - p) * 800, .95, 4, depth=1.6, lift=1.8)
-        place(c, reveal(CR1, ease(seg(t, 28.92, 29.1))), 770, 1480, 1.5, depth=1.6); place(c, reveal(CR2, ease(seg(t, 29.1, 29.28))), 770, 1480, 1.5, depth=1.6)
+        obj(c, POTS, 690, 1500 + (1 - p) * 800, 1.25, 4, depth=1.6, lift=1.8)
+        place(c, reveal(CR1, ease(seg(t, 28.88, 29.03))), 690, 1500, 2.0, depth=1.6); place(c, reveal(CR2, ease(seg(t, 29.03, 29.18))), 690, 1500, 2.0, depth=1.6)
     return c
 def s_factory(t):
     c = new(); k = ease(seg(t, 29.6, 36.9)); rack = ease(seg(t, 34.5, 34.95))
@@ -134,18 +140,20 @@ def s_factory(t):
         ph = (t * .2 + i / 8) % 1
         place(c, DSMOKE, 160 + i * 120 + sin(t + i * 2) * 60, 1700 - ph * 1500, 1.6 + ph * 3, i * 40, .75 * sin(ph * math.pi), depth=.7)
     p = pop(t, 30.3, .6, .8)
-    if p > 0 and rack < 1: obj(c, WORK, 590, 1420 + (1 - p) * 1100 + rack * 1300, 1.0, depth=1.9, lift=0, sh=0)
+    if p > 0 and rack < 1:
+        obj(c, WORK_F, 800, 1330 + (1 - p) * 1400 + rack * 1500, .78, depth=1.5, lift=0, sh=0)
+        obj(c, WORK, 330, 1270 + (1 - p) * 1100 + rack * 1500, 1.0, depth=2.0, lift=0, sh=0)
     p = pop(t, 34.75, .4)
     if p > 0:
         obj(c, LUNG, 360, 1120 + (1 - p) * 1200, 1.0, -3, ry=sin(t * 1.2) * 7, depth=1.5)
         spots(c, t, [(-70, -40, .9, 35.2), (90, 60, 1.1, 35.5), (60, -150, .7, 35.9), (-110, 130, .8, 36.2)], 360, 1120)
     p = pop(t, 35.45, .4)
     if p > 0:
-        obj(c, BLAD, 800, 1450 + (1 - p) * 1000, 1.0, 4, ry=-sin(t * 1.3) * 7, depth=1.7)
-        spots(c, t, [(-20, 10, .8, 35.9), (60, -60, .55, 36.2)], 800, 1450)
+        obj(c, BLAD, 780, 1430 + (1 - p) * 1000, 1.45, 4, ry=-sin(t * 1.3) * 7, depth=1.7)
+        spots(c, t, [(-20, 10, 1.0, 35.9), (90, -70, .7, 36.2)], 780, 1430)
     return c
 def s_kitchen2(t):
-    c = new(); k = ease(seg(t, 36.9, 40.1)); z = lerp(1.5, 1.64, k); cx, cy = 750, 1545
+    c = new(); k = ease(seg(t, 36.9, 40.1)); z = lerp(1.26, 1.36, k); cx, cy = 750, 1340
     bg_pan(c, KIT, cx, cy, z); P = lambda x, y: (W / 2 + (x - cx) * z, H / 2 + (y - cy) * z)
     fx, fy = P(750, 1632); px, py = P(750, 1610)
     place(c, FLAME, fx, fy - 6 * z, z * .78 * (1 + .05 * sin(t * 31)), add=True)
@@ -212,7 +220,7 @@ def s_weak(t):
     obj(c, KID, x, y, 1.08 * lerp(1, .8, m), -4, depth=1.0); obj(c, KID_W, x, y, 1.08 * lerp(1, .8, m), -4, w, depth=1.0, sh=0)
     p = pop(t, 51.5, .45, 1.0)
     if p > 0:
-        bx, by = 720 + (1 - p) * 800, 1330
+        bx, by = 730 + (1 - p) * 800, 1340
         obj(c, BONE, bx, by, 1.0, (1 - p) * 40 + sin(t * .9) * 2, depth=1.4)
         for dx, dy, t0 in BSPK:
             a = pop(t, t0, .2)
@@ -238,7 +246,7 @@ def splash(c, t, t0, x, y, col=(1, .8, .7)):
     if 0 < q < 1: cv2.ellipse(c, (int(x), int(y)), (int(60 + 260 * q), int(24 + 100 * q)), 0, 0, 360, tuple(v * (1 - q) for v in col) + (1 - q,), max(1, int(14 * (1 - q))), cv2.LINE_AA)
 def s_sour(t):
     c = new(); k = ease(seg(t, 56.8, 60.1)); bg_pan(c, SAUCE, 700, 1245, lerp(.86, 1.02, k)); c[..., :3] *= 1 + .04 * sin(t * 9)
-    for o, t0, x, y, s in ((TOM, 57.75, 420, 900, .8), (LEM, 58.3, 700, 1250, .75)):
+    for o, t0, x, y, s in ((TOM, 57.75, 400, 880, 1.15), (LEM, 58.3, 690, 1330, 1.05)):
         q = seg(t, t0, t0 + .4)
         if q > 0:
             e = min(1, q) ** 2; sink = ease(seg(t, t0 + .9, t0 + 2.4))
@@ -255,9 +263,9 @@ def proj(dx, dy, s, rx, cx, cy):
 def s_skin(t):
     c = new(); k = ease(seg(t, 60.1, 64.5)); bg_pan(c, REDL, 750, 900, 1.0)
     m = ease(seg(t, 60.75, 61.9)); surf = SURF0 * (1 - m) + SURF1 * m if 0 < m < 1 else (SURF1 if m >= 1 else SURF0)
-    s, rx, cx, cy = lerp(1.2, 1.38, k), 64, 540, 1560
+    s, rx, cx, cy = lerp(1.55, 1.8, k), 60, 540, 1380
     place(c, surf, cx, cy, s, lerp(-4, 3, k), rx=rx, depth=1.0)
-    hz = np.clip((np.arange(H, dtype=np.float32) - 760) / 500, 0, 1)[:, None, None]; c[..., :3] = c[..., :3] * hz + np.array([.5, .05, .05], np.float32) * (1 - hz) * (c[..., 3:4] > 0) + c[..., :3] * 0
+    hz = np.clip((np.arange(H, dtype=np.float32) - 560) / 420, 0, 1)[:, None, None]; c[..., :3] = c[..., :3] * hz + np.array([.5, .05, .05], np.float32) * (1 - hz) * (c[..., 3:4] > 0) + c[..., :3] * 0
     r = random.Random(9)
     for i in range(30):
         ph = (t * r.uniform(.15, .4) + r.random()) % 1; place(c, GLOW, r.uniform(0, W), 1000 - ph * 1000, r.uniform(.08, .2), 0, .25 * sin(ph * math.pi), add=True, depth=.5)
@@ -267,20 +275,19 @@ def s_skin(t):
             for n in range(7):
                 ph = ((t - 62.0) * (.35 + .05 * n) + n / 7 + j * .13) % 1
                 if t - 62.0 < ph / (.35 + .05 * n): continue
-                place(c, BEAD, X + sin(t * 2 + n + j) * 26 + (n - 3) * 14, Y - ph * 900, .35 + .35 * (1 - ph), 0, sin(ph * math.pi) ** .5, depth=1.2)
+                place(c, BEAD, X + sin(t * 2 + n + j) * 30 + (n - 3) * 18, Y - ph * 1000, .6 + .5 * (1 - ph), 0, sin(ph * math.pi) ** .5, depth=1.2)
     return c
 def s_pans(t):
     c = new(); bg_pan(c, YEL, 750, 1200, 1.0)
-    p = pop(t, 64.55, .35)
-    obj(c, PAN_B, 320, 1040 + (1 - p) * 900, 1.02, -100 + (1 - p) * 40, depth=1.0)
+    p = pop(t, 64.55, .35); obj(c, PAN_B, 560 - (1 - p) * 1100, 800, 1.75, -4 + (1 - p) * 30, depth=1.0)
     p2 = pop(t, 64.7, .35)
-    if p2 > 0: obj(c, PAN_C, 770, 1040 + (1 - p2) * 900, 1.02, 80 - (1 - p2) * 40, depth=1.0)
-    place(c, reveal(TICK, ease(seg(t, 65.25, 65.6))), 770, 1040, 1.3, depth=1.2)
-    for o, t0, x, y, s in ((TOM, 65.5, 270, 1000, .34), (TAM, 66.55, 380, 1090, .42)):
+    if p2 > 0: obj(c, PAN_C, 560 + (1 - p2) * 1100, 1440, 1.75, 3 - (1 - p2) * 30, depth=1.0)
+    place(c, reveal(TICK, ease(seg(t, 65.25, 65.6))), 430, 1440, 1.9, depth=1.2)
+    for o, t0, x, y, s in ((TOM, 65.5, 330, 760, .5), (TAM, 66.55, 500, 860, .6)):
         q = seg(t, t0, t0 + .3)
         if q > 0:
-            e = min(1, q) ** 2; obj(c, o, x, lerp(-300, y, e), lerp(.9, s, e), (1 - e) * 50, depth=1.3, lift=3 * (1 - e) + .5)
-            place(c, reveal(CR1, ease(seg(t, t0 + .42, t0 + .56))), x, y, .8, depth=1.4); place(c, reveal(CR2, ease(seg(t, t0 + .56, t0 + .7))), x, y, .8, depth=1.4)
+            e = min(1, q) ** 2; obj(c, o, x, lerp(-300, y, e), lerp(1.2, s, e), (1 - e) * 50, depth=1.3, lift=3 * (1 - e) + .5)
+            place(c, reveal(CR1, ease(seg(t, t0 + .42, t0 + .56))), x, y, 1.2, depth=1.4); place(c, reveal(CR2, ease(seg(t, t0 + .56, t0 + .7))), x, y, 1.2, depth=1.4)
     return c
 def s_fridge(t):
     c = new(); k = ease(seg(t, 67.3, 69.4)); bg_pan(c, FRIDGE, 700, 1245, lerp(.84, .92, k))
@@ -331,11 +338,11 @@ def s_pour(t):
     c = new(); k = ease(seg(t, 78.0, 80.7)); bg_pan(c, POUR, 700 + 30 * k, 1245, lerp(.84, 1.0, k)); c[..., :3] *= 1 + .04 * sin(t * 19)
     p = pop(t, 79.35, .4)
     if p > 0:
-        x, y = 560, 1380 + (1 - p) * 900; obj(c, CAST, x, y, 1.0, 0, depth=1.7, lift=1.5)
-        for i, (dx, dy) in enumerate(((-180, 40), (-60, 120), (90, 60), (200, 0), (10, -20), (-230, -60), (150, 150))):
+        x, y = 540, 1330 + (1 - p) * 900; obj(c, CAST, x, y, 1.25, 0, depth=1.7, lift=1.5)
+        for i, (dx, dy) in enumerate(((-220, 50), (-70, 150), (110, 80), (250, 0), (10, -30), (-290, -70), (190, 190))):
             a = pop(t, 79.6 + i * .09, .25)
             if a > 0:
-                place(c, RGLOW, x + dx, y + dy, .55 + .12 * sin(t * 7 + i), 0, .6 * a, add=True, depth=1.7); place(c, LBEAD, x + dx, y + dy, .7 * a, depth=1.7)
+                place(c, RGLOW, x + dx, y + dy, .55 + .12 * sin(t * 7 + i), 0, .6 * a, add=True, depth=1.7); place(c, LBEAD, x + dx, y + dy, 1.1 * a, depth=1.7)
     return c
 def s_study(t):
     c = new(); bg_pan(c, YEL, 750, 1200, 1.0); ind = ease(seg(t, 84.8, 85.2))
@@ -363,7 +370,7 @@ def s_study(t):
 def s_fda(t):
     c = new(); bg_pan(c, YEL, 750, 1200, 1.0); p = pop(t, 87.6, .5, .9)
     obj(c, NOTICE, 540 + (1 - p) * 1200, 690, .95, -3 + (1 - p) * 14, rx=(1 - p) * 30 + 5, ry=(1 - p) * 40 + sin(t * 1.1) * 5, depth=.9, lift=1.6)
-    for i, (x, y, s, fl) in enumerate(((250, 1430, .82, 1), (830, 1430, .82, -1), (540, 1520, 1.0, 1))):
+    for i, (x, y, s, fl) in enumerate(((250, 1400, 1.0, 1), (830, 1400, 1.0, -1), (540, 1540, 1.3, 1))):
         a = pop(t, 88.7 + i * .25, .35)
         if a > 0:
             obj(c, CAST_Y, x, y + (1 - a) * 700, s, 0, depth=1.3 + i * .2, lift=1)
@@ -433,13 +440,14 @@ def s_notal(t):
     if sh: c[:] = np.roll(c, int(sh), 0)
     return c
 def s_outro(t):
-    c = new(); k = ease(seg(t, 110.4, 113.3)); bg_pan(c, KIT2, 750, 1260 + 20 * k, lerp(1.5, 1.6, k)); c[..., :3] *= .75
-    for i, (o, x, y) in enumerate(zip(OUT_V, (270, 810, 540), (1330, 1380, 1520))):
-        p = pop(t, 110.5 + i * .15, .35)
-        if p > 0: obj(c, o, x, y + (1 - p) * 700, 1.0, 0, depth=1.0 + i * .3, lift=1)
-    for i, (o, x, y) in enumerate(zip(BUBS, (500, 580, 520), (560, 720, 880))):
-        p = pop(t, 112.15 + i * .28, .3)
-        if p > 0: obj(c, o, x, y + (1 - p) * 60, .92 * p, (-2, 2, -1)[i], rx=(1 - p) * 40, ry=sin(t * 1.4 + i) * 6, depth=1.6 + i * .2, lift=1.4)
+    c = new(); k = ease(seg(t, 110.4, 113.3)); bg_pan(c, GRN, 750 - 30 * k, 1200, 1.0)
+    place(c, PLANK, 540, 1560, 1.0, anchor=(.5, 0), depth=.9)
+    for i, (o, x) in enumerate(zip(OUT_V, (250, 840, 545))):
+        p = pop(t, 110.5 + i * .15, .35); hh = (o['i'].shape[0] - 2 * PAD) / 2 * 1.15
+        if p > 0: obj(c, o, x, 1568 - hh + (1 - p) * 700 + (i == 2) * 6, 1.15, 0, depth=1.0 + i * .3, lift=.6)
+    for i, (o, x, y) in enumerate(zip(BUBS, (500, 580, 520), (560, 740, 920))):
+        p = pop(t, 112.15 + i * .26, .3)
+        if p > 0: obj(c, o, x, y + (1 - p) * 60, 1.25 * p, (-2, 2, -1)[i], rx=(1 - p) * 40, ry=sin(t * 1.4 + i) * 6, depth=1.6 + i * .2, lift=1.4)
     return c
 
 SCENES = [(21.9, s_list), (29.62, s_factory), (36.9, s_kitchen2), (40.1, s_food), (45.6, s_gut), (47.3, s_vessel), (48.75, s_kidney), (50.3, s_weak),

@@ -496,7 +496,7 @@ def throw_fwd(u):
     a = ease(seg(u, 11.75, 13.1)); zb = ease(seg(u, 13.05, 13.55))
     z = lerp(1.0, 1.22, a) * (1 + 7 * zb * zb)
     out = ease(seg(u, 13.3, 14.5))
-    place(c, SKY, W / 2, H / 2 + lerp(-560, -190, out), 1.0 + .1 * out, depth=.15)
+    place(c, SKY, W / 2, H / 2 + lerp(-380, -120, out), 1.38 + .1 * out, depth=.15)
     place(c, CITY, W / 2, lerp(1290, 1840, out), lerp(.62, 1.12, out), anchor=(.5, 1), depth=.5)
     l = ease(seg(u, 12.5, 13.15)); wx, wy = 540, 760
     def pot():
