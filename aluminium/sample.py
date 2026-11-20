@@ -382,5 +382,5 @@ if __name__ == '__main__':
     f0, f1 = (int(sys.argv[3]), int(sys.argv[4])) if len(sys.argv) > 4 else (0, int(DUR * FPS))
     step = int(sys.argv[5]) if len(sys.argv) > 5 else 1
     for i in range(f0, f1, step):
-        render(i)
+        if not os.path.exists(f'{OUT}/{i:05d}.jpg'): render(i)
     print('done', f0, f1, flush=True)
