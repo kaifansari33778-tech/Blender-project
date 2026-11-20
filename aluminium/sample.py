@@ -4,7 +4,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 A, OUT = sys.argv[1], sys.argv[2]
-W, H, FPS, DUR = 1080, 1920, 30, 11.7
+W, H, FPS, DUR = 1080, 1920, 30, 21.9
 FONT = os.path.join(A, 'fonts')
 anton = lambda s: ImageFont.truetype(f'{FONT}/Anton.ttf', s)
 def inter(s, w=600):
@@ -28,17 +28,50 @@ def over(dst, src, op=1.0):
     a = src[..., 3:4] * op
     dst[..., :3] = dst[..., :3] * (1 - a) + src[..., :3] * op
     dst[..., 3:4] = dst[..., 3:4] * (1 - a) + a
-def place(dst, img, cx, cy, s=1.0, rot=0.0, op=1.0, sx=None, add=False, anchor=(0.5, 0.5)):
-    """draw img with its anchor at (cx,cy), uniform scale s, rotation deg"""
+CAM = [0.0, 0.0]
+def place(dst, img, cx, cy, s=1.0, rot=0.0, op=1.0, sx=None, add=False, anchor=(0.5, 0.5), rx=0.0, ry=0.0, depth=1.0):
+    """draw img with its anchor at (cx,cy); rot = in-plane deg, rx/ry = 3D tilt deg with perspective; depth scales camera sway"""
     if op <= 0 or s <= 0: return
+    cx += CAM[0] * depth; cy += CAM[1] * depth
     h, w = img.shape[:2]
     ax, ay = w * anchor[0], h * anchor[1]
-    c, sn = math.cos(math.radians(rot)) * s, math.sin(math.radians(rot)) * s
-    kx = (sx or 1.0)
-    M = np.array([[c * kx, -sn, cx - (c * kx * ax - sn * ay)], [sn * kx, c, cy - (sn * kx * ax + c * ay)]], np.float32)
-    lay = cv2.warpAffine(img, M, (dst.shape[1], dst.shape[0]), flags=cv2.INTER_AREA if s < 0.6 else cv2.INTER_LINEAR)
+    if rx or ry:
+        F = 2400.0
+        pts = np.array([[-ax, -ay, 0], [w - ax, -ay, 0], [w - ax, h - ay, 0], [-ax, h - ay, 0]], np.float32) * s
+        a, b, g = math.radians(rx), math.radians(ry), math.radians(rot)
+        Rx = np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
+        Ry = np.array([[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]])
+        Rz = np.array([[math.cos(g), -math.sin(g), 0], [math.sin(g), math.cos(g), 0], [0, 0, 1]])
+        P = pts @ (Rz @ Ry @ Rx).T
+        k = F / (F + P[:, 2])
+        q = np.stack([cx + P[:, 0] * k, cy + P[:, 1] * k], 1).astype(np.float32)
+        Hm = cv2.getPerspectiveTransform(np.array([[0, 0], [w, 0], [w, h], [0, h]], np.float32), q)
+        lay = cv2.warpPerspective(img, Hm, (dst.shape[1], dst.shape[0]), flags=cv2.INTER_LINEAR)
+        if not add: lay[..., :3] *= float(np.clip(1 + 0.35 * math.sin(b) - 0.25 * abs(math.sin(a)), .55, 1.3))
+    else:
+        c, sn = math.cos(math.radians(rot)) * s, math.sin(math.radians(rot)) * s
+        kx = (sx or 1.0)
+        M = np.array([[c * kx, -sn, cx - (c * kx * ax - sn * ay)], [sn * kx, c, cy - (sn * kx * ax + c * ay)]], np.float32)
+        lay = cv2.warpAffine(img, M, (dst.shape[1], dst.shape[0]), flags=cv2.INTER_AREA if s < 0.6 else cv2.INTER_LINEAR)
     if add: dst[..., :3] += lay[..., :3] * op
     else: over(dst, lay, op)
+def grade(img, amb, s=0.35, rim=None, rim_r=7, rim_k=0.9, top=1.08, bot=0.82, under=None, sat=1.0):
+    """match a cutout to its scene: ambient tint, top-to-bottom light falloff, coloured rim light, bounce glow from below"""
+    o = img.copy(); a = o[..., 3:4]
+    amb = np.array(amb, np.float32); amb = amb / amb.max()
+    lum = (o[..., :3] @ np.array([.3, .59, .11], np.float32))[..., None]
+    o[..., :3] = lum + (o[..., :3] - lum) * sat
+    o[..., :3] *= (1 - s) + s * amb
+    g = np.linspace(top, bot, o.shape[0], dtype=np.float32)[:, None, None]
+    o[..., :3] *= g
+    if rim is not None:
+        e = a * np.clip(1 - blur(np.ascontiguousarray(a[..., 0]), rim_r)[..., None], 0, 1) * 2 * rim_k
+        o[..., :3] += np.array(rim, np.float32) * e
+    if under is not None:
+        u = np.clip(np.linspace(-2.2, 1, o.shape[0], dtype=np.float32), 0, 1)[:, None, None] ** 2
+        o[..., :3] += np.array(under, np.float32) * u * a * .5
+    o[..., :3] = np.minimum(o[..., :3], a)
+    return o
 def shadow_of(img, r=18, dark=0.55):
     a = blur(np.ascontiguousarray(img[..., 3]), r) * dark
     o = np.zeros_like(img); o[..., 3] = a
@@ -196,21 +229,23 @@ def finish_overlay():
 print('building art', flush=True)
 POT_P = Image.open(f'{A}/cut/pot.png'); PASTA_P = Image.open(f'{A}/cut/plate.png')
 KIT, KIT2, PUR = kitchen(), kitchen(False), purple()
-POT = pre(POT_P.resize((620, int(620 * POT_P.height / POT_P.width)), Image.LANCZOS)); POT_SH = shadow_of(cv2.copyMakeBorder(POT, 60, 60, 60, 60, cv2.BORDER_CONSTANT), 26, .7)
+POT = pre(POT_P.resize((620, int(620 * POT_P.height / POT_P.width)), Image.LANCZOS)); POT_SH = shadow_of(cv2.copyMakeBorder(POT, 60, 60, 60, 60, cv2.BORDER_CONSTANT), 26, .7); POT_RAW = POT
+POT = grade(POT_RAW, (.78, 1.0, .82), .38, rim=(.25, .5, .38), under=(.25, .55, 1.0), bot=.7)
 fl = np.asarray(Image.open(f'{A}/raw/flame.jpg').convert('RGB')).astype(np.float32) / 255
 fl = cv2.resize(fl, (560, 430)); fl = np.clip(fl * 1.5 - 0.06, 0, 1); FLAME = np.dstack([fl, np.zeros(fl.shape[:2], np.float32)])
-PLATE = pre(plate_img(PASTA_P)); PLATE_SH = shadow_of(cv2.copyMakeBorder(PLATE, 80, 80, 80, 80, cv2.BORDER_CONSTANT), 34, .75)
-CARD_P = msg_card(); CARD = pre(CARD_P); CARD_SH = shadow_of(cv2.copyMakeBorder(CARD, 50, 50, 50, 50, cv2.BORDER_CONSTANT), 20, .5)
+PLATE = grade(pre(plate_img(PASTA_P)), (1.0, .93, .74), .45, rim=(.2, .42, .3), top=1.1, bot=.72, sat=1.12); PLATE_SH = shadow_of(cv2.copyMakeBorder(PLATE, 80, 80, 80, 80, cv2.BORDER_CONSTANT), 34, .75)
+CARD_P = msg_card(); CARD = grade(pre(CARD_P), (1.0, .95, .84), .5, top=1.0, bot=.86); CARD_SH = shadow_of(cv2.copyMakeBorder(CARD, 50, 50, 50, 50, cv2.BORDER_CONSTANT), 20, .5)
 HAND_P = Image.open(f'{A}/cut/hand.png')
-MIC = pre(Image.open(f'{A}/cut/mic1.png').resize((600, 849), Image.LANCZOS)); MIC_F = np.ascontiguousarray(MIC[:, ::-1]); MIC_B = blur(np.ascontiguousarray(MIC[:, ::-1]), 5); MIC_SH = shadow_of(cv2.copyMakeBorder(MIC, 0, 0, 0, 0, cv2.BORDER_CONSTANT), 22, .4)
+MIC = grade(pre(Image.open(f'{A}/cut/mic1.png').resize((600, 849), Image.LANCZOS)), (.95, .55, 1.0), .6, rim=(.95, .25, .8), rim_r=9, rim_k=1.1, bot=.7, sat=.7); MIC_F = np.ascontiguousarray(MIC[:, ::-1]); MIC_B = blur(np.ascontiguousarray(MIC[:, ::-1]), 5); MIC_SH = shadow_of(cv2.copyMakeBorder(MIC, 0, 0, 0, 0, cv2.BORDER_CONSTANT), 22, .4)
 ONAIR0, ONAIR1 = pre(on_air(False)), pre(on_air(True))
-ART = [pre(article('HEALTH ALERT', 'ALUMINIUM POTS', '= CANCER?', True, POT_P)), pre(article('MUST READ', 'IS YOUR POT', 'POISONING YOU?')), pre(article('WARNING', 'THROW YOUR', 'POTS OUT TODAY!'))]
+ART = [grade(pre(x), (1.0, .82, 1.0), .45, rim=(.8, .3, .7), rim_r=5, rim_k=.5, bot=.78) for x in (article('HEALTH ALERT', 'ALUMINIUM POTS', '= CANCER?', True, POT_P), article('MUST READ', 'IS YOUR POT', 'POISONING YOU?'), article('WARNING', 'THROW YOUR', 'POTS OUT TODAY!'))]
 ART_SH = shadow_of(cv2.copyMakeBorder(ART[0], 50, 50, 50, 50, cv2.BORDER_CONSTANT), 24, .5)
 VID_P = video_screen(POT_P); CHAT_P = chat_screen(CARD_P)
 RIMS = [(240, 80, 150), (90, 220, 230), (250, 250, 250), (150, 110, 250), (250, 150, 60)]
 PH_VID = [pre(phone(VID_P, r).resize((300, 615), Image.LANCZOS)) for r in RIMS]
 PH_VID_BIG = pre(phone(VID_P, RIMS[0]))
 PH_CHAT = pre(phone(CHAT_P, RIMS[1]).resize((300, 615), Image.LANCZOS))
+PH_FAR = [blur(x, 2.2) * np.array([.62, .5, .8, 1], np.float32) for x in PH_VID]
 PH_SH = shadow_of(cv2.copyMakeBorder(PH_VID[0], 40, 40, 40, 40, cv2.BORDER_CONSTANT), 16, .55)
 BOK = [bokeh_sprite(r, c) for r, c in ((60, (255, 120, 220)), (90, (160, 120, 255)), (40, (255, 180, 240)), (120, (120, 80, 230)))]
 BOKP = [(rnd.uniform(0, W), rnd.uniform(0, H), rnd.randrange(4), rnd.uniform(.3, 1), rnd.uniform(0, 6)) for _ in range(22)]
@@ -220,8 +255,11 @@ CAPS = {k: caption(*v) for k, v in dict(
     cancer=('CANCER?', 'OR A RUMOUR?', (255, 170, 215), (236, 70, 150)),
     pod=('YOU HEARD IT', 'ON PODCASTS', (255, 170, 225), (236, 80, 170)),
     art=('IN ARTICLES', 'AND VIDEOS', (255, 170, 225), (236, 80, 170)),
-    claim=('ALUMINIUM COOKWARE', 'CAUSES CANCER', (255, 190, 190), (238, 60, 70))).items()}
-CAPT = [('cook', 0.15, 0.95, 2.0), ('cancer', 2.05, 3.5, 5.7), ('pod', 5.75, 6.35, 7.4), ('art', 7.42, 8.39, 9.5), ('claim', 9.57, 10.35, 99)]
+    claim=('ALUMINIUM COOKWARE', 'CAUSES CANCER', (255, 190, 190), (238, 60, 70)),
+    throw=('SO THROW', 'IT OUT?', (255, 190, 180), (240, 70, 70)),
+    simple=("BUT IT'S", 'NOT THAT SIMPLE', (200, 220, 255), (90, 130, 255)),
+    proof=('SO FAR', 'NO SOLID PROOF', (255, 205, 195), (236, 62, 62))).items()}
+CAPT = [('cook', 0.15, 0.95, 2.0), ('cancer', 2.05, 3.5, 5.7), ('pod', 5.75, 6.35, 7.4), ('art', 7.42, 8.39, 9.5), ('claim', 9.57, 10.35, 11.75), ('throw', 12.1, 12.85, 14.5), ('simple', 14.52, 15.28, 16.65), ('proof', 16.78, 18.45, 99)]
 MUL, ADD = finish_overlay()
 # phone-in-hand: rotate so the phone is upright, find the transparent screen hole
 hp = HAND_P.rotate(15.6, expand=True, resample=Image.BICUBIC); hp = hp.crop(hp.getbbox())
@@ -232,7 +270,7 @@ k = max((i for i in range(1, n) if i not in border), key=lambda i: st[i, cv2.CC_
 cnt = cv2.findContours((lab == k).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0]
 box = cv2.boxPoints(cv2.minAreaRect(cnt)); box = box[np.argsort(box[:, 1])]
 tl, tr = sorted(box[:2], key=lambda p: p[0]); bl, br = sorted(box[2:], key=lambda p: p[0])
-QUAD = np.array([tl, tr, br, bl], np.float32); HAND = pre(hp); HSZ = hp.size
+QUAD = np.array([tl, tr, br, bl], np.float32); HAND = grade(pre(hp), (1.0, .62, .95), .5, rim=(1.0, .3, .85), rim_r=14, rim_k=.8, top=1.05, bot=.6); HSZ = hp.size
 HOLE = (lab == k).astype(np.float32); HOLE = cv2.dilate(HOLE, np.ones((5, 5)))
 print('hand', HSZ, QUAD.tolist(), flush=True)
 
@@ -243,7 +281,7 @@ def steam(dst, t, x, y, n=5, op=.35, sc=1.0):
         place(dst, STEAM, x + math.sin(t * 1.3 + i * 2.1) * 40 * sc + (i - n / 2) * 30 * sc, y - ph * 420 * sc, (0.6 + ph * 1.4) * sc, 0, op * math.sin(ph * math.pi))
 def bg_pan(dst, tex, cx, cy, z):
     th, tw = tex.shape[:2]
-    M = np.array([[z, 0, W / 2 - cx * z], [0, z, H / 2 - cy * z]], np.float32)
+    M = np.array([[z, 0, W / 2 - cx * z + CAM[0] * .3], [0, z, H / 2 - cy * z + CAM[1] * .3]], np.float32)
     dst[:] = cv2.warpAffine(tex, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 def s_kitchen(t):
     c = np.zeros((H, W, 4), np.float32)
@@ -272,13 +310,14 @@ def s_plate(t):
     bg_pan(c, KIT2, 750, lerp(1230, 1260, k), z * 1.5)
     c[..., :3] *= lerp(.8, .6, k)
     cx, cy = W / 2, 1010
-    place(c, PLATE_SH, cx + 10, cy + 60, z * .74, 0, .9); place(c, PLATE, cx, cy, z * .72, lerp(-2, 1, k))
+    place(c, PLATE_SH, cx + 10, cy + 60, z * .74, 0, .9, depth=.75); place(c, PLATE, cx, cy, z * .72, lerp(-2, 1, k), depth=.8)
     steam(c, t, cx, cy - 120, 4, .22)
     for i, (t0, dx, dy, r) in enumerate(((3.95, -70, -150, -5), (3.72, 60, -75, 4), (2.45, 0, 0, -2))):
         if t > t0:
             p = back(seg(t, t0, t0 + .3)); yy = 1420 + dy + (1 - p) * 220
-            place(c, CARD_SH, cx + dx + 12, yy + 22, .98 * p, r, .8)
-            place(c, CARD, cx + dx, yy, .96 * p * (1 + .01 * math.sin(t * 2 + i)), r + (1 - p) * 8)
+            wob = math.sin(t * 1.3 + i * 1.7) * 7
+            place(c, CARD_SH, cx + dx + 14 + i * 6, yy + 24 + i * 8, .98 * p, r, .8, depth=1.1 + i * .25)
+            place(c, CARD, cx + dx, yy, .96 * p, r + (1 - p) * 8, rx=(1 - p) * 55 + 6, ry=wob, depth=1.2 + i * .35)
     return c
 def bokeh(c, t, op=1.0):
     for x, y, i, s, ph in BOKP:
@@ -298,7 +337,7 @@ def s_phone(t):
     extra = [(5.2, 180, 520, -9, .82, PH_CHAT), (5.34, 900, 620, 8, .9, PH_VID[1]), (5.46, 930, 1500, 12, .7, PH_CHAT)]
     for t0, x, y, r, sc, im in extra:
         if t > t0:
-            p = back(seg(t, t0, t0 + .28)); place(c, PH_SH, x + 14, y + 24, sc * p, r, .7); place(c, im, x, y + (1 - p) * 160, sc * p, r)
+            p = back(seg(t, t0, t0 + .28)); place(c, PH_SH, x + 14, y + 24, sc * p, r, .7, depth=.6); place(c, im, x, y + (1 - p) * 160, sc * p, r, rx=(1 - p) * 40, ry=(18 if x > 540 else -18) + math.sin(t * 2 + x) * 5, depth=.6)
     src = s_plate(min(t, 4.78) + (t - 4.78) * .3 if t > 4.78 else t)
     Hm = cv2.getPerspectiveTransform(np.array([[0, 0], [W, 0], [W, H], [0, H]], np.float32), quad.astype(np.float32))
     scr = cv2.warpPerspective(src, Hm, (W, H), flags=cv2.INTER_AREA)
@@ -316,19 +355,19 @@ def s_studio(t):
     up = eout(seg(t, 7.3, 7.7))            # mics leave upward
     if up < 1:
         a = eout(seg(t, 5.72, 6.2)); b = eout(seg(t, 5.85, 6.35))
-        place(c, MIC_B, lerp(1700, 860, a) - drift * 1.4, 640 - up * 1500, .95, lerp(40, 14, a) + math.sin(t * 1.7) * .6)
+        place(c, MIC_B, lerp(1700, 860, a) - drift * 1.4, 640 - up * 1500, .95, lerp(40, 14, a) + math.sin(t * 1.7) * .6, depth=.5)
         mx, my, mr = lerp(-500, 300, b) - drift * 2.2, 1060 - up * 1900, lerp(-40, -9, b) + math.sin(t * 2.2) * .8
         place(c, MIC_SH, mx + 36, my + 44, 1.2, mr, .8)
-        place(c, MIC, mx, my, 1.2, mr)
+        place(c, MIC, mx, my, 1.2, mr, depth=1.8)
         p = back(seg(t, 6.2, 6.5)); lit = t > 6.62 and not (6.72 < t < 6.78)
-        place(c, ONAIR1 if lit else ONAIR0, 700 - drift * 1.2, 1560 + (1 - p) * 500 + up * 900, 1.15, -3)
+        place(c, ONAIR1 if lit else ONAIR0, 700 - drift * 1.2, 1560 + (1 - p) * 500 + up * 900, 1.15, -3, ry=-22 + math.sin(t * 1.2) * 4, rx=6, depth=1.5)
     # --- articles
     if t > 7.3:
         out = ease(seg(t, 8.3, 8.75))
         for i, (t0, x, y, r, sc) in enumerate(((7.5, 300, 1200, -9, .86), (7.6, 800, 1230, 7, .86), (7.38, 540, 1190, -2, 1.0))):
             p = back(seg(t, t0, t0 + .38), 1.0); yy = y + (1 - p) * 1500 + out * (1700 + i * 100)
             img = ART[(i + 1) % 3] if i < 2 else ART[0]
-            place(c, ART_SH, x + 16, yy + 26, sc, r + out * 14, .8); place(c, img if i == 2 else blur(img, 0), x, yy, sc, r + (1 - p) * 10 + out * 14)
+            place(c, ART_SH, x + 22, yy + 34, sc, r + out * 14, .8, depth=.8 + i * .3); place(c, img, x, yy, sc, r + (1 - p) * 10 + out * 14, rx=(1 - p) * 45 + 8, ry=(-20, 20, 0)[i] + math.sin(t * 1.4 + i) * 5, depth=.9 + i * .4)
     # --- videos
     if t > 8.3:
         wall = eout(seg(t, 9.0, 9.9)); zz = lerp(1.0, 0.56, wall) * lerp(1, 1.1, ease(seg(t, 9.6, DUR)))
@@ -340,17 +379,232 @@ def s_studio(t):
                 if p <= 0: continue
                 depth = 0.75 + rr.random() * .35; ox, oy, r = rr.uniform(-40, 40), rr.uniform(-60, 60) + (gx % 2) * 150, rr.uniform(-9, 9)
                 x = W / 2 + (gx * 330 + ox) * zz * depth * 1.75; y = 1010 + (gy * 640 + oy) * zz * depth * 1.75
-                place(c, PH_VID[j % 5], x, y + (1 - p) * 120, zz * depth * 1.7 * p, r + math.sin(t * 1.5 + j) * 1.2, min(1, depth))
+                place(c, (PH_FAR if depth < .9 else PH_VID)[j % 5], x, y + (1 - p) * 120, zz * depth * 1.7 * p, r + math.sin(t * 1.5 + j) * 1.2, 1, rx=rr.uniform(-14, 14) + (1 - p) * 50, ry=rr.uniform(-28, 28) + math.sin(t * 1.1 + j) * 6, depth=(depth - .6) * 3)
         p = back(seg(t, 8.38, 8.8), 1.0)
-        place(c, PH_SH, W / 2 + 20, 1010 + 40 + (1 - p) * 1700, 3.0 * zz, 0, .7)
-        place(c, PH_VID_BIG, W / 2, 1010 + (1 - p) * 1700, 1.62 * zz, (1 - p) * 10 + math.sin(t * 1.7) * .8)
+        place(c, PH_SH, W / 2 + 30, 1010 + 50 + (1 - p) * 1700, 3.0 * zz, 0, .8, depth=1.6)
+        place(c, PH_VID_BIG, W / 2, 1010 + (1 - p) * 1700, 1.62 * zz, (1 - p) * 10 + math.sin(t * 1.7) * .8, rx=(1 - p) * 30 + 4, ry=math.sin(t * 1.15) * 11, depth=2.0)
     return c
+# ---------- art for the throw / rewind / evidence-desk scenes ----------
+def night_sky():
+    w, h = 1300, 2300
+    y = np.linspace(0, 1, h, dtype=np.float32)[:, None, None]
+    top, mid, hor = np.array([.07, .06, .19]), np.array([.30, .15, .36]), np.array([1.0, .52, .16])
+    c = np.where(y < .55, top + (mid - top) * (y / .55), mid + (hor - mid) * np.clip((y - .55) / .27, 0, 1) ** 1.6) * np.ones((h, w, 1), np.float32)
+    cl = cv2.resize(np.random.RandomState(4).rand(46, 9).astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
+    cl = np.clip(cl - .52, 0, 1)[..., None] * 2.2
+    c = c * (1 - cl * .55) + np.array([.42, .26, .46]) * cl * .35
+    st = np.random.RandomState(5)
+    for _ in range(140):
+        x, yy = st.randint(0, w), st.randint(0, int(h * .5)); c[yy:yy + 2, x:x + 2] += st.rand() * .6
+    return np.dstack([np.clip(c, 0, 1), np.ones((h, w), np.float32)]).astype(np.float32)
+def city():
+    w, h = 1700, 760; im = Image.new('RGBA', (w, h)); d = ImageDraw.Draw(im); r = random.Random(11)
+    for layer, col, base in ((0, (52, 30, 62), 300), (1, (22, 14, 34), 430)):
+        x = -20
+        while x < w:
+            bw = r.randint(70, 190); bh = r.randint(120, 420 - layer * 120)
+            d.rectangle([x, h - base - bh + 300, x + bw, h], fill=col + (255,))
+            for wy in range(h - base - bh + 320, h - 20, 34):
+                for wx in range(x + 12, x + bw - 14, 26):
+                    if r.random() < .28: d.rectangle([wx, wy, wx + 10, wy + 14], fill=(255, r.randint(170, 220), 90, 255))
+            x += bw + r.randint(-10, 30)
+    a = pre(im); gl = blur(a, 9); a[..., :3] = np.minimum(a[..., :3] + gl[..., :3] * .5, a[..., 3:4])
+    return a
+def night_wall():
+    k = (np.clip(KIT2[..., :3] * np.array([.42, .46, .62], np.float32), 0, 1) * 255).astype(np.uint8)
+    im = Image.fromarray(k).convert('RGBA'); d = ImageDraw.Draw(im)
+    x0, y0, x1, y1 = 450, 380, 1050, 1000; wood, dk = (118, 74, 30, 255), (60, 36, 14, 255)
+    d.rectangle([x0 - 40, y0 - 40, x1 + 40, y1 + 40], fill=wood); d.rectangle([x0 - 40, y1 + 20, x1 + 40, y1 + 62], fill=(140, 90, 38, 255))
+    for sx, a, b in ((-1, x0 - 40, x0 - 190), (1, x1 + 40, x1 + 190)):
+        d.polygon([(a, y0 - 40), (b, y0 - 90), (b, y1 + 90), (a, y1 + 40)], fill=(96, 60, 24, 255))
+        m = (a + b) // 2; d.line([m, y0 - 50, m, y1 + 50], fill=dk, width=6)
+        for yy in range(y0, y1, 120): d.line([a, yy, b, yy - 14 * sx * sx], fill=dk, width=4)
+    d.rectangle([x0, y0, x1, y1], fill=(0, 0, 0, 0))
+    a = pre(im)
+    glow = np.zeros(a.shape[:2], np.float32); glow[y0:y1, x0:x1] = 1; glow = blur(glow, 60) * (1 - (a[..., 3] < .5))
+    a[..., :3] += glow[..., None] * np.array([.30, .16, .10]) * a[..., 3:4]
+    return a
+def yellow():
+    w, h = 1500, 2400
+    c = np.ones((h, w, 3), np.float32) * np.array([.82, .62, .09])
+    c += (noise_tex(w, h, 3, 21, .04) + noise_tex(w, h, 60, 22, .025) + noise_tex(w, h, 500, 23, .10))[..., None]
+    return np.dstack([np.clip(c, 0, 1), np.ones((h, w), np.float32)]).astype(np.float32)
+def tag_img():
+    w, h = 230, 430; im = Image.new('RGBA', (w, h)); d = ImageDraw.Draw(im)
+    d.line([w / 2, 0, w / 2, 90], fill=(190, 40, 40, 255), width=5)
+    d.polygon([(40, 120), (w / 2, 66), (w - 40, 120), (w - 30, h - 6), (30, h - 6)], fill=(244, 240, 230, 255))
+    d.polygon([(40, 120), (w / 2, 66), (w - 40, 120), (w - 37, 190), (37, 190)], fill=(206, 32, 40, 255))
+    d.ellipse([w / 2 - 11, 88, w / 2 + 11, 110], fill=(60, 20, 20, 255))
+    d.text((w / 2, 156), 'EVIDENCE', font=anton(40), fill=(255, 255, 255, 255), anchor='mm')
+    for yy in (240, 285, 330): d.line([56, yy, w - 56, yy], fill=(180, 176, 168, 255), width=3)
+    return im
+def magnifier():
+    w, h = 760, 900; im = Image.new('RGBA', (w, h)); d = ImageDraw.Draw(im); cx = cy = 250; R = 205
+    hd = Image.new('RGBA', (w, h)); hdd = ImageDraw.Draw(hd)
+    hdd.rounded_rectangle([cx - 30, cy + R - 6, cx + 30, cy + R + 60], 8, fill=(190, 160, 80, 255))
+    hdd.rounded_rectangle([cx - 38, cy + R + 50, cx + 38, cy + R + 400], 30, fill=(96, 48, 22, 255))
+    hdd.rounded_rectangle([cx - 38, cy + R + 50, cx - 12, cy + R + 400], 12, fill=(128, 70, 34, 255))
+    im.alpha_composite(hd.rotate(-42, center=(cx, cy), resample=Image.BICUBIC))
+    d = ImageDraw.Draw(im)
+    d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=(150, 118, 50, 255), width=30)
+    d.ellipse([cx - R + 4, cy - R + 4, cx + R - 4, cy + R - 4], outline=(232, 204, 120, 255), width=9)
+    g = Image.new('RGBA', (w, h)); gd = ImageDraw.Draw(g)
+    gd.ellipse([cx - R + 28, cy - R + 28, cx + R - 28, cy + R - 28], fill=(255, 255, 255, 26))
+    gd.arc([cx - R + 50, cy - R + 50, cx + R - 50, cy + R - 50], 200, 262, fill=(255, 255, 255, 190), width=16)
+    im.alpha_composite(g.filter(ImageFilter.GaussianBlur(4)))
+    return im, (cx / w, cy / h), R - 28
+def bag_img():
+    w, h = 600, 760; im = Image.new('RGBA', (w, h)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([10, 30, w - 10, h - 10], 14, fill=(255, 255, 255, 44), outline=(255, 255, 255, 150), width=5)
+    r = random.Random(2)
+    for _ in range(9):
+        x = r.randint(20, w - 60); y = r.randint(120, h - 160); d.line([x, y, x + r.randint(-50, 50), y + r.randint(80, 200)], fill=(255, 255, 255, r.randint(40, 110)), width=r.randint(3, 9))
+    im = im.filter(ImageFilter.GaussianBlur(2.2)); d = ImageDraw.Draw(im)
+    d.rectangle([10, 30, w - 10, 52], fill=(226, 30, 40, 255)); d.rectangle([10, 60, w - 10, 66], fill=(255, 255, 255, 120))
+    d.rounded_rectangle([130, 300, w - 130, 470], 6, fill=(236, 230, 204, 245))
+    return im
+def text_sprite(txt, font, fill, pad=30):
+    b = font.getbbox(txt); im = Image.new('RGBA', (b[2] - b[0] + pad * 2, b[3] - b[1] + pad * 2))
+    ImageDraw.Draw(im).text((pad - b[0], pad - b[1]), txt, font=font, fill=fill); return im
+def ink_img():
+    t = text_sprite('NO PROOF', anton(150), (204, 26, 38, 255), 44); d = ImageDraw.Draw(t)
+    d.rounded_rectangle([10, 10, t.width - 10, t.height - 10], 14, outline=(204, 26, 38, 255), width=14)
+    a = pre(t); n = np.clip(noise_tex(t.width, t.height, 3, 31, 1.4) + .95, .25, 1)[..., None]
+    return a * n
+def stamp_tool():
+    w, h = 460, 620; im = Image.new('RGBA', (w, h)); d = ImageDraw.Draw(im)
+    d.ellipse([130, 0, 330, 200], fill=(176, 112, 52, 255)); d.ellipse([160, 20, 250, 110], fill=(214, 156, 90, 255))
+    d.polygon([(190, 170), (270, 170), (300, 420), (160, 420)], fill=(150, 92, 40, 255))
+    d.rounded_rectangle([40, 410, 420, 540], 16, fill=(120, 70, 30, 255)); d.rounded_rectangle([40, 410, 420, 450], 16, fill=(170, 108, 50, 255))
+    d.rectangle([56, 540, 404, 590], fill=(150, 24, 30, 255))
+    return im
+
+SKY, CITY, WALL, YEL = night_sky(), city(), night_wall(), yellow()
+POT_N = grade(POT_RAW, (.5, .45, 1.0), .7, rim=(1.0, .5, .15), rim_r=12, rim_k=.9, top=.8, bot=.95, under=(1.0, .45, .1), sat=.7)
+POT_IN = grade(POT_RAW, (.6, .7, 1.0), .55, rim=(.25, .3, .5), top=.95, bot=.6, sat=.8)
+_pd = POT_P.resize((820, int(820 * POT_P.height / POT_P.width)), Image.LANCZOS)
+POT_D = grade(pre(_pd), (1.0, .86, .5), .42, rim=(1.0, .78, .25), rim_r=10, rim_k=.6, top=1.1, bot=.72, under=(.9, .6, .05))
+POT_D_SH = shadow_of(cv2.copyMakeBorder(POT_D, 80, 80, 80, 80, cv2.BORDER_CONSTANT), 30, .6)
+TAG = grade(pre(tag_img()), (1.0, .9, .6), .35, bot=.85)
+_m, MAG_ANCH, MAG_R = magnifier(); MAG = grade(pre(_m), (1.0, .88, .55), .3, rim=(1.0, .8, .3), rim_k=.4); MAG_SH = shadow_of(MAG, 16, .4)
+BAG = pre(bag_img()); BAG_SH = shadow_of(BAG, 22, .9)
+PROOF_TXT = pre(text_sprite('PROOF', ImageFont.truetype(f'{FONT}/Caveat.ttf', 150), (40, 36, 30, 255)))
+INK = ink_img(); STAMP = grade(pre(stamp_tool()), (1.0, .85, .55), .3, rim=(1.0, .8, .3), rim_k=.5); STAMP_B = blur(STAMP, 7)
+
+def throw_fwd(u):
+    c = np.zeros((H, W, 4), np.float32)
+    a = ease(seg(u, 11.75, 13.1)); zb = ease(seg(u, 13.05, 13.55))
+    z = lerp(1.0, 1.22, a) * (1 + 7 * zb * zb)
+    out = ease(seg(u, 13.3, 14.5))
+    place(c, SKY, W / 2, H / 2 + lerp(-560, -190, out), 1.0 + .1 * out, depth=.15)
+    place(c, CITY, W / 2, lerp(1290, 1840, out), lerp(.62, 1.12, out), anchor=(.5, 1), depth=.5)
+    l = ease(seg(u, 12.5, 13.15)); wx, wy = 540, 760
+    def pot():
+        if u < 13.15:
+            sq = math.sin(min(1, max(0, seg(u, 12.3, 12.5))) * math.pi) * .06
+            px, py = lerp(540, 562, l), lerp(1245, 760, l) - math.sin(l * math.pi) * 250
+            ps, pr = lerp(1.0, .30, l), l * 300
+            X, Y = wx + (px - wx) * z, wy + (py - wy) * z
+            if l < .35: place(c, POT_SH, X, wy + (1440 - wy) * z, z * (1 + l), 0, .8 * (1 - l / .35), anchor=(.5, .9))
+            place(c, POT_IN if l < .6 else POT_N, X, Y, ps * z * (1 + sq), pr, 1, sx=1 - sq * 2, rx=l * 14, ry=l * 10)
+        else:
+            f = seg(u, 13.15, 14.5); e = eout(f)
+            px, py = lerp(566, 640, e), lerp(760, 900, f) - math.sin(f * math.pi) * 170
+            place(c, POT_N, px, py, lerp(.39, 1.12, e), 300 + f * 300, 1, rx=14 + math.sin(f * 5) * 16, ry=10 + math.sin(f * 3.1) * 18, depth=1.6)
+    behind = u >= 12.95
+    if behind: pot()
+    wop = 1 - ease(seg(u, 13.38, 13.55))
+    if wop > 0: place(c, WALL, wx, wy, .8 * z, 0, wop, anchor=(750 / 1500, 690 / 2500), depth=1.0 + zb)
+    if not behind: pot()
+    return c
+def s_throw(t):
+    if t < 14.5: return throw_fwd(t)[..., :3]
+    if t < 15.42:
+        img = throw_fwd(lerp(14.5, 12.28, ease(seg(t, 14.5, 15.42))))[..., :3]
+        # rewind look: streaks + torn scan bands
+        img = img * .8 + cv2.blur(img, (71, 1)) * .28
+        r = np.random.RandomState(int(t * 30))
+        for _ in range(5):
+            y = r.randint(0, H - 90); hh = r.randint(14, 80)
+            img[y:y + hh] = np.roll(img[y:y + hh], r.randint(-46, 46), 1) * 1.12
+        return img
+    k = seg(t, 15.42, 16.7); c = throw_fwd(12.28 - .3 * ease(k))
+    bump = math.sin(min(1, k * 4) * math.pi) * (1 - min(1, k * 4))
+    return c[..., :3] * (1 + bump * .15)
+def lens(c, mx, my, R, zoom=1.55):
+    mx += CAM[0] * 2; my += CAM[1] * 2
+    x0, y0, x1, y1 = int(mx - R), int(my - R), int(mx + R), int(my + R)
+    if x1 <= 0 or y1 <= 0 or x0 >= W or y0 >= H: return
+    M = np.array([[zoom, 0, R - mx * zoom], [0, zoom, R - my * zoom]], np.float32)
+    patch = cv2.warpAffine(c, M, (2 * R, 2 * R), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    yy, xx = np.mgrid[-1:1:2 * R * 1j, -1:1:2 * R * 1j].astype(np.float32); rr = np.hypot(xx, yy)
+    m = np.clip((1 - rr) * 30, 0, 1)[..., None]; patch[..., :3] *= (1.08 - .25 * rr[..., None] ** 3)
+    X0, Y0, X1, Y1 = max(0, x0), max(0, y0), min(W, x1), min(H, y1)
+    sub = (slice(Y0 - y0, Y1 - y0), slice(X0 - x0, X1 - x0))
+    c[Y0:Y1, X0:X1] = c[Y0:Y1, X0:X1] * (1 - m[sub]) + patch[sub] * m[sub]
+def path(t, pts):
+    for (t0, x0, y0), (t1, x1, y1) in zip(pts, pts[1:]):
+        if t <= t1: k = ease(seg(t, t0, t1)); return lerp(x0, x1, k), lerp(y0, y1, k)
+    return pts[-1][1], pts[-1][2]
+def s_desk(t):
+    c = np.zeros((H, W, 4), np.float32); hit = 20.62
+    k = ease(seg(t, 16.6, 21.9)); z = lerp(1.0, 1.07, k)
+    bg_pan(c, YEL, 750, 1200 + k * 30, 1.0)
+    sh = max(0, 1 - (t - hit) / .3) * 16 * math.sin((t - hit) * 80) if t > hit else 0
+    e = back(seg(t, 16.66, 17.1), .9); px, py = lerp(1500, 540, e), 900 + sh
+    place(c, POT_D_SH, px + 6, py + 16, 1.0 * z, 0, .9, anchor=(.5, .9), depth=.85)
+    place(c, POT_D, px, py, z, lerp(8, 0, e), anchor=(.5, .97), depth=1.0)
+    sw = seg(t, 17.2, 18.0)
+    if 0 < sw < 1:
+        g = np.zeros_like(POT_D); xs = np.arange(POT_D.shape[1])[None, :] - np.arange(POT_D.shape[0])[:, None] * .4
+        g[..., :3] = (np.exp(-((xs - lerp(-100, POT_D.shape[1] + 300, sw)) / 60) ** 2) * POT_D[..., 3])[..., None] * .45
+        place(c, g, px, py, z, 0, 1, add=True, anchor=(.5, .97))
+    ta = ease(seg(t, 17.0, 17.15))
+    if ta > 0:
+        swing = 16 * math.exp(-(t - 17.0) * 1.1) * math.sin((t - 17.0) * 7) + 2.5 * math.sin(t * 1.7)
+        place(c, TAG, px + 372 * z, py - 418 * z, 1.05 * z, swing, ta, anchor=(.5, 0), ry=swing * 1.5 + 8, depth=1.3)
+    bp = back(seg(t, 18.4, 18.9), 1.0); bx, by = 400, 1440 + (1 - bp) * 1000 + sh
+    if bp > 0:
+        place(c, BAG_SH, bx + 18, by + 26, 1, -4, .5, depth=1.25)
+        place(c, BAG, bx, by, 1, -4, rx=(1 - bp) * 50 + 5, ry=math.sin(t * 1.2) * 5, depth=1.3)
+        place(c, PROOF_TXT, bx - 2, by + 2, .82, -4, bp * (1 - ease(seg(t, 19.45, 20.2))), depth=1.3)
+        if t > hit:
+            place(c, INK, bx, by + 4, .62 * (1 + .3 * max(0, 1 - (t - hit) / .1)), -11, 1, depth=1.3)
+    mx, my = path(t, [(17.25, 1350, 380), (17.95, 300, 640), (19.1, 800, 700), (19.75, 850, 1420)])
+    mr = lerp(-18, 6, ease(seg(t, 17.25, 19.75))) + math.sin(t * 2.3) * 1.5
+    if t > 17.25:
+        lens(c, mx, my, int(MAG_R * 1.0))
+        place(c, MAG_SH, mx + 34, my + 46, 1, mr, .8, anchor=MAG_ANCH, depth=1.9)
+        place(c, MAG, mx, my, 1, mr, anchor=MAG_ANCH, depth=2.0)
+    q = seg(t, hit - .3, hit)
+    if q > 0 and t < hit + .5:
+        if q < 1:
+            e2 = q * q; place(c, STAMP_B, lerp(900, bx + 10, e2), lerp(700, by + 50, e2), lerp(1.9, 1.0, e2), lerp(25, -11, e2), 1, anchor=(.5, .95), depth=2.2)
+        else:
+            u2 = ease(seg(t, hit + .08, hit + .5))
+            place(c, STAMP if u2 < .3 else STAMP_B, bx + 10 + u2 * 500, by + 50 - u2 * 700, 1 + u2 * .9, -11 + u2 * 30, 1 - u2 * .6, anchor=(.5, .95), depth=2.2)
+    return c
+def scene(t):
+    CAM[0], CAM[1] = math.sin(t * .8) * 24, math.cos(t * .63) * 13
+    if t < 2.0: return s_kitchen(t)[..., :3]
+    if t < 4.78: return s_plate(t)[..., :3]
+    if t < 5.7: return s_phone(t)[..., :3]
+    if t < 11.75: return s_studio(t)[..., :3]
+    if t < 16.62: return s_throw(t)
+    return s_desk(t)[..., :3]
+def whip(img, t, t0, t1, tcut, vertical=False):
+    wq = seg(t, t0, t1)
+    if not 0 < wq < 1: return img
+    a = scene(min(t, tcut - .001)) if t >= tcut else img
+    b = scene(max(t, tcut)) if t < tcut else img
+    L = H if vertical else W
+    off = int(ease(wq) * L); k = int(1 + 300 * math.sin(wq * math.pi))
+    if vertical: return cv2.blur(np.concatenate([a, b], 0)[off:off + H], (1, k))
+    return cv2.blur(np.concatenate([a, b], 1)[:, off:off + W], (k, 1))
 def frame(t):
-    if t < 2.0: c = s_kitchen(t)
-    elif t < 4.78: c = s_plate(t)
-    elif t < 5.7: c = s_phone(t)
-    else: c = s_studio(t)
-    img = c[..., :3]
+    img = scene(t)
+    img = whip(img, t, 11.58, 11.95, 11.75, True)
+    img = whip(img, t, 16.44, 16.82, 16.62)
     # steam flash stove -> plate
     f = 1 - abs(seg(t, 1.78, 2.22) * 2 - 1)
     if f > 0: img = img + (np.array([.95, .97, .93]) - img) * min(1, f * 1.6)
@@ -365,8 +619,8 @@ def frame(t):
     for key, t1, t2, tend in CAPT:
         l1, l2 = CAPS[key]; fo = 1 - ease(seg(t, tend - .12, tend))
         o1, o2 = ease(seg(t, t1, t1 + .14)) * fo, ease(seg(t, t2, t2 + .14)) * fo
-        if o1 > 0: place(cc, l1, 30, 96 + (1 - o1) * 14, 1, 0, o1, anchor=(0, 0))
-        if o2 > 0: place(cc, l2, 30, 96 + (1 - o2) * 14, 1, 0, o2, anchor=(0, 0))
+        if o1 > 0: place(cc, l1, 30, 96 + (1 - o1) * 14, 1, 0, o1, anchor=(0, 0), depth=0)
+        if o2 > 0: place(cc, l2, 30, 96 + (1 - o2) * 14, 1, 0, o2, anchor=(0, 0), depth=0)
     img = img * (1 - cc[..., 3:4]) + cc[..., :3]
     return img
 def render(i):
