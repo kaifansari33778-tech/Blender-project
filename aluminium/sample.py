@@ -35,26 +35,26 @@ def place(dst, img, cx, cy, s=1.0, rot=0.0, op=1.0, sx=None, add=False, anchor=(
     cx += CAM[0] * depth; cy += CAM[1] * depth
     h, w = img.shape[:2]
     ax, ay = w * anchor[0], h * anchor[1]
-    if rx or ry:
-        F = 2400.0
-        pts = np.array([[-ax, -ay, 0], [w - ax, -ay, 0], [w - ax, h - ay, 0], [-ax, h - ay, 0]], np.float32) * s
-        a, b, g = math.radians(rx), math.radians(ry), math.radians(rot)
-        Rx = np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
-        Ry = np.array([[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]])
-        Rz = np.array([[math.cos(g), -math.sin(g), 0], [math.sin(g), math.cos(g), 0], [0, 0, 1]])
-        P = pts @ (Rz @ Ry @ Rx).T
-        k = F / (F + P[:, 2])
-        q = np.stack([cx + P[:, 0] * k, cy + P[:, 1] * k], 1).astype(np.float32)
-        Hm = cv2.getPerspectiveTransform(np.array([[0, 0], [w, 0], [w, h], [0, h]], np.float32), q)
-        lay = cv2.warpPerspective(img, Hm, (dst.shape[1], dst.shape[0]), flags=cv2.INTER_LINEAR)
-        if not add: lay[..., :3] *= float(np.clip(1 + 0.35 * math.sin(b) - 0.25 * abs(math.sin(a)), .55, 1.3))
-    else:
-        c, sn = math.cos(math.radians(rot)) * s, math.sin(math.radians(rot)) * s
-        kx = (sx or 1.0)
-        M = np.array([[c * kx, -sn, cx - (c * kx * ax - sn * ay)], [sn * kx, c, cy - (sn * kx * ax + c * ay)]], np.float32)
-        lay = cv2.warpAffine(img, M, (dst.shape[1], dst.shape[0]), flags=cv2.INTER_AREA if s < 0.6 else cv2.INTER_LINEAR)
-    if add: dst[..., :3] += lay[..., :3] * op
-    else: over(dst, lay, op)
+    DW, DH = dst.shape[1], dst.shape[0]
+    pts = np.array([[-ax, -ay, 0], [w - ax, -ay, 0], [w - ax, h - ay, 0], [-ax, h - ay, 0]], np.float32) * s
+    if sx: pts[:, 0] *= sx
+    a, b, g = math.radians(rx), math.radians(ry), math.radians(rot)
+    Rx = np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
+    Ry = np.array([[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]])
+    Rz = np.array([[math.cos(g), -math.sin(g), 0], [math.sin(g), math.cos(g), 0], [0, 0, 1]])
+    P = pts @ (Rz @ Ry @ Rx).T
+    k = 2400.0 / (2400.0 + P[:, 2])
+    q = np.stack([cx + P[:, 0] * k, cy + P[:, 1] * k], 1)
+    x0, y0 = max(0, int(math.floor(q[:, 0].min())) - 1), max(0, int(math.floor(q[:, 1].min())) - 1)
+    x1, y1 = min(DW, int(math.ceil(q[:, 0].max())) + 2), min(DH, int(math.ceil(q[:, 1].max())) + 2)
+    if x1 <= x0 or y1 <= y0: return
+    q = (q - (x0, y0)).astype(np.float32)
+    Hm = cv2.getPerspectiveTransform(np.array([[0, 0], [w, 0], [w, h], [0, h]], np.float32), q)
+    lay = cv2.warpPerspective(img, Hm, (x1 - x0, y1 - y0), flags=cv2.INTER_AREA if s < 0.6 and not (rx or ry) else cv2.INTER_LINEAR)
+    if (rx or ry) and not add: lay[..., :3] *= float(np.clip(1 + 0.35 * math.sin(b) - 0.25 * abs(math.sin(a)), .55, 1.3))
+    sub = dst[y0:y1, x0:x1]
+    if add: sub[..., :3] += lay[..., :3] * op
+    else: over(sub, lay, op)
 def grade(img, amb, s=0.35, rim=None, rim_r=7, rim_k=0.9, top=1.08, bot=0.82, under=None, sat=1.0):
     """match a cutout to its scene: ambient tint, top-to-bottom light falloff, coloured rim light, bounce glow from below"""
     o = img.copy(); a = o[..., 3:4]
@@ -212,7 +212,7 @@ def caption(l1, l2, c_top, c_bot):
         im.alpha_composite(Image.fromarray(np.dstack([col, np.asarray(m)[..., None]]).astype(np.uint8), 'RGBA'))
     o1 = Image.new('RGBA', (w, h));
     line(l1, anton(74), 40, (255, 255, 255), (238, 232, 220), (60, 40, 20)); a = im.copy()
-    im = Image.new('RGBA', (w, h)); line(l2, anton(116), 118, c_top, c_bot, tuple(int(v * .8) for v in c_bot)) if l2 else None
+    im = Image.new('RGBA', (w, h)); line(l2, anton(next(z for z in range(116, 60, -4) if anton(z).getlength(l2) <= 930)), 118, c_top, c_bot, tuple(int(v * .8) for v in c_bot)) if l2 else None
     return pre(a), pre(im)
 def finish_overlay():
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
